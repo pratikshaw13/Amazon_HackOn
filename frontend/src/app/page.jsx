@@ -5,10 +5,12 @@ import Link from 'next/link'
 import MetricCard from '../components/ui/MetricCard'
 import Badge from '../components/ui/Badge'
 import { marketplaceApi } from '../lib/api'
+import { useAuth } from '../context/AuthContext'
 import { ArrowRight, Leaf, Package, TrendingUp, Recycle } from 'lucide-react'
 
 export default function Dashboard() {
   const [listings, setListings] = useState([])
+  const { user, isAuthenticated } = useAuth()
 
   useEffect(() => {
     async function fetchListings() {
@@ -22,10 +24,21 @@ export default function Dashboard() {
     fetchListings()
   }, [])
 
+  // Greeting: first name only, or generic fallback
+  const firstName = isAuthenticated && user?.name
+    ? user.name.split(' ')[0]
+    : null
+
   return (
     <div className="space-y-8">
       {/* Hero Banner */}
       <div className="bg-gradient-to-r from-brand-green to-brand-green-dark rounded-2xl p-8 text-white">
+        {/* Personalised welcome line */}
+        {firstName && (
+          <p className="text-green-200 text-sm font-medium mb-1">
+            👋 Welcome back, <span className="text-white font-semibold">{firstName}</span>!
+          </p>
+        )}
         <h1 className="text-3xl font-bold mb-2">Amazon SecondLife AI</h1>
         <p className="text-green-100 text-lg mb-6 max-w-xl">
           No usable product should become dead inventory. Our AI ensures every item finds its next best owner.
