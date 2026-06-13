@@ -29,12 +29,14 @@ class S3Service:
                 "s3",
                 aws_access_key_id=aws_key,
                 aws_secret_access_key=aws_secret,
-                region_name=self.aws_region
+                region_name=self.aws_region,
+                endpoint_url=f"https://s3.{self.aws_region}.amazonaws.com",
+                config=boto3.session.Config(signature_version='s3v4')
             )
             # Verify bucket exists
             self.s3_client.head_bucket(Bucket=self.bucket_name)
             self.available = True
-            print(f"✅ S3 connected: bucket '{self.bucket_name}'")
+            print(f"✅ S3 connected: bucket '{self.bucket_name}' (region: {self.aws_region})")
 
             # Ensure CORS is configured
             self._setup_cors()
