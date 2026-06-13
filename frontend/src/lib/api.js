@@ -5,6 +5,7 @@ const api = axios.create({
   timeout: 30000,
 })
 
+// Attach auth token if present
 api.interceptors.request.use(config => {
   if (typeof window !== 'undefined') {
     const token = localStorage.getItem('sl_token')
@@ -12,6 +13,22 @@ api.interceptors.request.use(config => {
   }
   return config
 })
+
+// Auto-logout on 401
+api.interceptors.response.use(
+  response => response,
+  error => {
+    if (
+      typeof window !== 'undefined' &&
+      error.response?.status === 401 &&
+      window.location.pathname !== '/login'
+    ) {
+      localStorage.removeItem('sl_token')
+      window.location.href = '/login'
+    }
+    return Promise.reject(error)
+  }
+)
 
 export const valuationApi = {
   analyse: (formData) => api.post('/api/v1/valuation/analyse', formData, {
@@ -44,6 +61,12 @@ export const greenApi = {
 
 export const agentsApi = {
   getStatus: () => api.get('/api/v1/agents/status'),
+}
+
+export const authApi = {
+  register: (data) => api.post('/api/v1/auth/register', data),
+  login: (data) => api.post('/api/v1/auth/login', data),
+  me: () => api.get('/api/v1/auth/me'),
 }
 
 export default api

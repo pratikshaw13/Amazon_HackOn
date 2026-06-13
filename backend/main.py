@@ -25,7 +25,7 @@ app.add_middleware(
 )
 
 # Import and mount routers
-from routers import valuation, passport, marketplace, heatmap, prevention, green, agents
+from routers import valuation, passport, marketplace, heatmap, prevention, green, agents, auth
 
 app.include_router(valuation.router, prefix="/api/v1", tags=["Valuation"])
 app.include_router(passport.router, prefix="/api/v1", tags=["Passport"])
@@ -34,6 +34,7 @@ app.include_router(heatmap.router, prefix="/api/v1", tags=["Heatmap"])
 app.include_router(prevention.router, prefix="/api/v1", tags=["Prevention"])
 app.include_router(green.router, prefix="/api/v1", tags=["Green Credits"])
 app.include_router(agents.router, prefix="/api/v1", tags=["Agents"])
+app.include_router(auth.router, prefix="/api/v1", tags=["Auth"])
 
 
 @app.get("/health")
