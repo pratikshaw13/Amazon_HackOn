@@ -1,0 +1,74 @@
+## Resale Value Retention by Category
+
+Electronics typically retain 40-60% of their value in the first year, dropping to 25-40% by year two. High-demand electronics like smartphones and laptops depreciate faster due to rapid model cycles. Monitors retain better value (50-65% at year one) because specs change slowly.
+
+Furniture retains 60-80% in excellent condition. Solid wood pieces hold value better than particleboard. Office chairs from premium brands (Herman Miller, Steelcase) can retain 70%+ even after 3 years.
+
+Baby gear depreciates 30-50% in the first year due to safety concerns and outgrowing. However, demand is consistently high because parents buy for short periods. Strollers, car seats (within expiry), and high chairs have strong resale markets.
+
+Books retain 20-40% of cover price for popular titles. Textbooks can retain 50-60% near academic seasons. Out-of-print or collectible books may appreciate.
+
+Fashion accessories (bags, watches, sunglasses) retain 40-70% for premium brands. Fast fashion items retain less than 20%. Vintage items can appreciate significantly.
+
+## Common Defects by Product Type
+
+Electronics (monitors, laptops): Dead pixels, battery degradation, keyboard wear, screen scratches, hinge looseness, charging port damage, speaker distortion.
+
+Baby gear (strollers, monitors, chairs): Fabric stains, wheel wear, buckle damage, battery degradation in monitors, sun bleaching, foam compression in mattresses.
+
+Headphones: Ear pad wear, cable fraying, driver imbalance, band cracking, Bluetooth connectivity issues, microphone degradation.
+
+Fitness equipment: Rubber degradation, display malfunction, resistance mechanism wear, rust on metal parts, strap wear, battery issues in smart devices.
+
+Kitchen appliances: Motor wear, blade dullness, seal degradation, discoloration from heat, electrical cord damage, non-stick coating wear.
+
+## Average Days to Sell by Condition (Indian Market)
+
+Like New (90-100 score): 2-5 days in high-demand cities, 7-12 days elsewhere
+Excellent (75-89 score): 5-10 days in high-demand cities, 12-20 days elsewhere
+Good (60-74 score): 10-18 days in high-demand cities, 20-35 days elsewhere
+Fair (40-59 score): 20-40 days, or consider refurbishment path
+Needs Refurbishment (<40 score): Not suitable for direct sale; route to refurbishment partner or donation
+
+High-demand cities for electronics: Bengaluru, Hyderabad, Pune (IT hubs)
+High-demand cities for baby gear: Mumbai, Delhi, Bengaluru (young professional families)
+High-demand cities for fitness: Mumbai, Delhi, Bengaluru (health-conscious demographics)
+
+## Green Credit Earning Rates
+
+Selling a pre-owned item: 50 Green Credits
+Buying pre-owned (vs new): 30 Green Credits
+Donating an item: 75 Green Credits
+Peer-to-peer exchange: 40 Green Credits
+Providing photos for AI verification: 10 Green Credits
+Completing product Health Passport: 15 Green Credits
+
+Levels: Seedling (0) → Sapling (100) → Tree (300) → Forest (700) → Ecosystem (1500)
+Conversion: 100 credits = ₹10 Amazon Pay balance
+
+## Refurbishment Cost Ranges (India)
+
+Electronics (minor): ₹500-2,000 (screen protector replacement, deep cleaning, battery replacement)
+Electronics (major): ₹2,000-8,000 (screen replacement, motherboard repair, full service)
+Furniture: ₹1,000-5,000 (reupholstery, refinishing, hardware replacement)
+Baby gear: ₹300-1,500 (fabric replacement, wheel fixing, sanitization)
+Fitness equipment: ₹500-3,000 (belt replacement, lubrication, electronic repair)
+
+Refurbishment ROI threshold: Cost should not exceed 30% of expected post-refurbishment sale price. If refurbishment cost > 30% of projected value, route to donation or recycle instead.
+
+## Demand Patterns
+
+Seasonal peaks:
+- Fitness equipment: January (New Year resolutions), June (pre-monsoon)
+- Electronics: July-August (back to school/college), October-November (Diwali)
+- Baby gear: Consistent year-round (babies don't follow seasons)
+- Books: June-July (academic year start), January (exam prep)
+- Fashion: October-November (festive season), March-April (wedding season)
+
+City-specific demand drivers:
+- Bengaluru: Tech professionals, startup culture → high demand for monitors, laptops, standing desks
+- Mumbai: Finance professionals, new parents → high demand for baby gear, premium electronics
+- Delhi: Government employees, students → diverse demand, price-sensitive
+- Hyderabad: IT sector growth → electronics, fitness gear
+- Pune: IT + automotive → electronics, books, fitness
+- Kochi: High literacy rate → books, electronics, educational toys

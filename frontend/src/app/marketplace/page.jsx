@@ -1,0 +1,145 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import Link from 'next/link'
+import { marketplaceApi } from '../../lib/api'
+import Badge from '../../components/ui/Badge'
+import LoadingSpinner from '../../components/ui/LoadingSpinner'
+import { CATEGORIES, CONDITION_GRADES, getScoreColor } from '../../lib/constants'
+import { Search, Filter } from 'lucide-react'
+
+export default function MarketplacePage() {
+  const [listings, setListings] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [filters, setFilters] = useState({ category: '', condition: '' })
+  const [activeFilter, setActiveFilter] = useState('All')
+
+  const chipFilters = ['All', 'AI Verified', 'Like New', 'Excellent', 'Good', 'Fair']
+
+  useEffect(() => {
+    fetchListings()
+  }, [filters])
+
+  async function fetchListings() {
+    setLoading(true)
+    try {
+      const params = {}
+      if (filters.category) params.category = filters.category
+      if (filters.condition) params.condition = filters.condition
+      const res = await marketplaceApi.getListings(params)
+      setListings(res.data.listings || [])
+    } catch (err) {
+      console.error('Failed to fetch listings:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleChipClick = (chip) => {
+    setActiveFilter(chip)
+    if (chip === 'All' || chip === 'AI Verified') {
+      setFilters({ ...filters, condition: '' })
+    } else {
+      setFilters({ ...filters, condition: chip })
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">SecondLife Marketplace</h1>
+        <p className="text-gray-500 mt-1">AI-verified pre-owned products with full transparency</p>
+      </div>
+
+      {/* Filters */}
+      <div className="bg-white border border-gray-100 rounded-xl p-4 space-y-3">
+        <div className="flex gap-2 flex-wrap">
+          {chipFilters.map(chip => (
+            <button
+              key={chip}
+              onClick={() => handleChipClick(chip)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                activeFilter === chip
+                  ? 'bg-brand-green text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {chip}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-3">
+          <select
+            value={filters.category}
+            onChange={(e) => setFilters({ ...filters, category: e.target.value })}
+            className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-brand-green"
+          >
+            <option value="">All Categories</option>
+            {CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+          </select>
+        </div>
+      </div>
+
+      {/* Listings Grid */}
+      {loading ? (
+        <LoadingSpinner text="Loading marketplace..." />
+      ) : listings.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {listings.map((item) => (
+            <Link
+              key={item.product_id}
+              href={`/passport/${item.product_id}`}
+              className="bg-white border border-gray-100 rounded-xl p-4 hover:shadow-md transition-shadow"
+            >
+              {/* Product Image Area */}
+              <div className="h-32 bg-gray-50 rounded-lg flex items-center justify-center mb-3 text-4xl">
+                📦
+              </div>
+
+              {/* Product Info */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Badge variant="blue" className="text-[10px]">✓ AI Verified</Badge>
+                  <Badge variant={item.condition_score >= 80 ? 'green' : item.condition_score >= 50 ? 'amber' : 'red'}>
+                    {item.condition_grade}
+                  </Badge>
+                </div>
+                <h3 className="font-semibold text-gray-900 text-sm">{item.product_name}</h3>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-lg font-bold text-brand-green">
+                      ₹{Number(item.estimated_value || 0).toLocaleString()}
+                    </p>
+                    {item.original_price && (
+                      <p className="text-xs text-gray-400 line-through">
+                        ₹{Number(item.original_price).toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-gray-400">Score</p>
+                    <p className="font-bold" style={{ color: getScoreColor(item.condition_score || 0) }}>
+                      {item.condition_score}/100
+                    </p>
+                  </div>
+                </div>
+                {item.green_impact_kg && (
+                  <p className="text-xs text-brand-green">🌱 Saves {item.green_impact_kg}kg CO₂</p>
+                )}
+              </div>
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-16 bg-white border border-gray-100 rounded-xl">
+          <p className="text-4xl mb-3">🏪</p>
+          <p className="text-gray-500 text-sm">No listings yet. Be the first to list a product!</p>
+          <Link href="/sell" className="text-brand-green hover:underline text-sm mt-2 inline-block">
+            List a Product →
+          </Link>
+        </div>
+      )}
+    </div>
+  )
+}
