@@ -1,65 +1,51 @@
 """
-RAG Retriever — Query FAISS index for relevant knowledge chunks.
+RAG Retriever — Simple keyword-based retrieval from product knowledge base.
+Uses direct text matching (no external AI dependencies).
 """
-import os
 from pathlib import Path
 
 RAG_DIR = Path(__file__).parent
-INDEX_DIR = RAG_DIR / "faiss_index"
+KNOWLEDGE_FILE = RAG_DIR / "product_knowledge.txt"
 
 
 class Retriever:
     def __init__(self):
-        self.vectorstore = None
-        self._load_index()
+        self.chunks = []
+        self._load_knowledge()
 
-    def _load_index(self):
-        """Load FAISS index if it exists."""
-        if not (INDEX_DIR / "index.faiss").exists():
-            print("ℹ️  FAISS index not found. RAG retrieval will use fallback.")
+    def _load_knowledge(self):
+        """Load and chunk the knowledge file."""
+        if not KNOWLEDGE_FILE.exists():
+            print("ℹ️  product_knowledge.txt not found. RAG retrieval disabled.")
             return
 
-        try:
-            from langchain_google_genai import GoogleGenerativeAIEmbeddings
-            from langchain_community.vectorstores import FAISS
+        with open(KNOWLEDGE_FILE, "r", encoding="utf-8") as f:
+            content = f.read()
 
-            api_key = os.getenv("GEMINI_API_KEY", "")
-            if not api_key or api_key == "your_gemini_api_key_here":
-                return
-
-            embeddings = GoogleGenerativeAIEmbeddings(
-                model="models/embedding-001",
-                google_api_key=api_key
-            )
-            self.vectorstore = FAISS.load_local(
-                str(INDEX_DIR), embeddings,
-                allow_dangerous_deserialization=True
-            )
-            print("✅ FAISS index loaded for RAG retrieval")
-        except Exception as e:
-            print(f"⚠️  Failed to load FAISS index: {e}")
+        # Split by double newlines (section breaks)
+        sections = content.split("\n\n")
+        self.chunks = [s.strip() for s in sections if s.strip() and len(s.strip()) > 20]
+        print(f"✅ RAG loaded: {len(self.chunks)} knowledge chunks")
 
     def query(self, query_text: str, k: int = 3) -> str:
         """
-        Query the vector store and return top-k relevant chunks as context string.
+        Simple keyword matching to find relevant chunks.
+        Returns top-k chunks as a single context string.
         """
-        if not self.vectorstore:
-            return self._fallback_context(query_text)
+        if not self.chunks:
+            return ""
 
-        try:
-            docs = self.vectorstore.similarity_search(query_text, k=k)
-            return "\n\n".join([doc.page_content for doc in docs])
-        except Exception as e:
-            print(f"RAG query error: {e}")
-            return self._fallback_context(query_text)
+        query_words = set(query_text.lower().split())
 
-    def _fallback_context(self, query: str) -> str:
-        """Provide basic context when vector store is unavailable."""
-        # Read from knowledge file directly as fallback
-        knowledge_file = RAG_DIR / "product_knowledge.txt"
-        if knowledge_file.exists():
-            with open(knowledge_file, "r", encoding="utf-8") as f:
-                content = f.read()
-            # Return first 1000 chars as basic context
-            return content[:1000]
-        return "No knowledge base available."
+        # Score each chunk by keyword overlap
+        scored = []
+        for chunk in self.chunks:
+            chunk_words = set(chunk.lower().split())
+            overlap = len(query_words & chunk_words)
+            scored.append((overlap, chunk))
+
+        # Sort by relevance and take top-k
+        scored.sort(key=lambda x: x[0], reverse=True)
+        top_chunks = [chunk for _, chunk in scored[:k] if _ > 0]
+
+        return "\n\n".join(top_chunks) if top_chunks else self.chunks[0]

@@ -1,12 +1,69 @@
 """
 Marketplace Router — Browse and filter SecondLife listings.
+Generates fresh S3 presigned URLs for product images on every request.
 """
 from fastapi import APIRouter, Query
 from typing import Optional
 from services.dynamodb_service import DynamoDBService
+from services.s3_service import S3Service
 
 router = APIRouter()
 db = DynamoDBService()
+s3 = S3Service()
+
+
+def refresh_image_urls(item: dict) -> dict:
+    """
+    Regenerate fresh presigned URLs for S3 images.
+    Handles multiple URL formats stored in DynamoDB:
+    - https://bucket.s3.amazonaws.com/key?params
+    - https://bucket.s3.region.amazonaws.com/key?params
+    - products/uuid/file.jpg (raw key)
+    - /api/v1/images/... (local fallback)
+    """
+    image_urls = item.get("image_urls", [])
+    if not image_urls or not s3.available:
+        return item
+
+    refreshed_urls = []
+    for url in image_urls:
+        s3_key = None
+
+        if url.startswith("https://") and "amazonaws.com" in url:
+            # Extract S3 key from URL — handle both global and regional endpoints
+            try:
+                # Remove query params first
+                path_with_host = url.split("?")[0]
+                # Format 1: https://bucket.s3.amazonaws.com/key
+                # Format 2: https://bucket.s3.region.amazonaws.com/key
+                if "/" + "products/" in path_with_host:
+                    s3_key = "products/" + path_with_host.split("/products/")[1]
+                elif s3.bucket_name in path_with_host:
+                    # Get everything after the bucket hostname
+                    after_host = path_with_host.split(".amazonaws.com/")[1]
+                    s3_key = after_host
+            except (IndexError, Exception):
+                pass
+
+        elif url.startswith("products/"):
+            s3_key = url
+
+        if s3_key:
+            try:
+                fresh_url = s3.s3_client.generate_presigned_url(
+                    "get_object",
+                    Params={"Bucket": s3.bucket_name, "Key": s3_key},
+                    ExpiresIn=604800  # 7 days
+                )
+                refreshed_urls.append(fresh_url)
+            except Exception:
+                refreshed_urls.append(url)
+        else:
+            # Local fallback URL or unrecognized format — keep as-is
+            refreshed_urls.append(url)
+
+    item["image_urls"] = refreshed_urls
+    return item
 
 
 @router.get("/marketplace/listings")
@@ -19,10 +76,10 @@ async def get_listings(
     sort_by: Optional[str] = Query("created_at"),
     limit: int = Query(20, le=50)
 ):
-    """Browse marketplace listings with filters."""
+    """Browse marketplace listings with filters. Returns fresh S3 image URLs."""
     items = await db.scan_table("sl_products", limit=limit)
 
-    # Apply filters in-memory (for prototype; production would use DynamoDB queries)
+    # Apply filters in-memory
     filtered = []
     for item in items:
         if item.get("status") != "active":
@@ -39,6 +96,8 @@ async def get_listings(
         if max_price and est_value > max_price:
             continue
 
+        # Refresh S3 image URLs
+        item = refresh_image_urls(item)
         filtered.append(item)
 
     # Sort
@@ -59,12 +118,17 @@ async def get_listings(
 
 @router.get("/marketplace/listings/{product_id}")
 async def get_listing_detail(product_id: str):
-    """Get full product detail with passport."""
+    """Get full product detail with passport and fresh image URLs."""
     product = await db.get_item("sl_products", {"product_id": product_id})
     if not product:
         return {"error": "Product not found"}
 
+    # Refresh image URLs
+    product = refresh_image_urls(product)
+
     passport = await db.get_item("sl_passports", {"product_id": product_id})
+    if passport:
+        passport = refresh_image_urls(passport)
 
     return {
         "product": product,
