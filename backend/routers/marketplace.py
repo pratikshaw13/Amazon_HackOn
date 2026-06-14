@@ -15,51 +15,68 @@ s3 = S3Service()
 def refresh_image_urls(item: dict) -> dict:
     """
     Regenerate fresh presigned URLs for S3 images.
-    Handles multiple URL formats stored in DynamoDB:
-    - https://bucket.s3.amazonaws.com/key?params
-    - https://bucket.s3.region.amazonaws.com/key?params
-    - products/uuid/file.jpg (raw key)
-    - /api/v1/images/... (local fallback)
+    Handles all URL formats stored in DynamoDB:
+    - https://s3.ap-south-1.amazonaws.com/bucket/key          (path-style, regional)
+    - https://s3.amazonaws.com/bucket/key                      (path-style, global)
+    - https://bucket.s3.amazonaws.com/key?params               (virtual-hosted + presigned)
+    - https://bucket.s3.region.amazonaws.com/key?params        (virtual-hosted regional + presigned)
+    - products/uuid/file.jpg                                   (raw key)
+    - /api/v1/images/...                                       (local fallback — no S3 object)
     """
     image_urls = item.get("image_urls", [])
     if not image_urls or not s3.available:
         return item
 
     refreshed_urls = []
+    bucket = s3.bucket_name  # e.g. "secondlife-ai-products"
+
     for url in image_urls:
         s3_key = None
+        url_str = str(url).split("?")[0]  # strip query params / presign signature
 
-        if url.startswith("https://") and "amazonaws.com" in url:
-            # Extract S3 key from URL — handle both global and regional endpoints
+        if url_str.startswith("https://") and "amazonaws.com" in url_str:
             try:
-                # Remove query params first
-                path_with_host = url.split("?")[0]
-                # Format 1: https://bucket.s3.amazonaws.com/key
-                # Format 2: https://bucket.s3.region.amazonaws.com/key
-                if "/" + "products/" in path_with_host:
-                    s3_key = "products/" + path_with_host.split("/products/")[1]
-                elif s3.bucket_name in path_with_host:
-                    # Get everything after the bucket hostname
-                    after_host = path_with_host.split(".amazonaws.com/")[1]
+                # ── Path-style URLs ──────────────────────────────────────────
+                # https://s3.amazonaws.com/bucket/key
+                # https://s3.region.amazonaws.com/bucket/key
+                if url_str.startswith("https://s3.") and "/amazonaws.com/" not in url_str:
+                    # e.g. https://s3.ap-south-1.amazonaws.com/secondlife-ai-products/products/...
+                    after_host = url_str.split(".amazonaws.com/", 1)[1]  # "bucket/key"
+                    if after_host.startswith(bucket + "/"):
+                        s3_key = after_host[len(bucket) + 1:]
+
+                # ── Virtual-hosted style URLs ────────────────────────────────
+                # https://bucket.s3.amazonaws.com/key
+                # https://bucket.s3.region.amazonaws.com/key
+                elif url_str.startswith(f"https://{bucket}.s3."):
+                    after_host = url_str.split(".amazonaws.com/", 1)[1]  # "key"
                     s3_key = after_host
-            except (IndexError, Exception):
+
+                # ── Generic fallback: look for /products/ in the path ────────
+                if not s3_key and "/products/" in url_str:
+                    s3_key = "products/" + url_str.split("/products/", 1)[1]
+
+            except Exception:
                 pass
 
-        elif url.startswith("products/"):
-            s3_key = url
+        elif url_str.startswith("products/"):
+            # Raw key already
+            s3_key = url_str
+
+        # /api/v1/images/... — local fallback, no real S3 object
+        # Leave these as-is; they won't load but we can't fix them
 
         if s3_key:
             try:
                 fresh_url = s3.s3_client.generate_presigned_url(
                     "get_object",
-                    Params={"Bucket": s3.bucket_name, "Key": s3_key},
+                    Params={"Bucket": bucket, "Key": s3_key},
                     ExpiresIn=604800  # 7 days
                 )
                 refreshed_urls.append(fresh_url)
             except Exception:
-                refreshed_urls.append(url)
+                refreshed_urls.append(url)  # keep original on error
         else:
-            # Local fallback URL or unrecognized format — keep as-is
             refreshed_urls.append(url)
 
     item["image_urls"] = refreshed_urls

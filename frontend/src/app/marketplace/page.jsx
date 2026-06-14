@@ -92,9 +92,25 @@ export default function MarketplacePage() {
               href={`/passport/${item.product_id}`}
               className="bg-white border border-gray-100 rounded-xl p-4 hover:shadow-md transition-shadow"
             >
-              {/* Product Image Area */}
-              <div className="h-32 bg-gray-50 rounded-lg flex items-center justify-center mb-3 text-4xl">
-                📦
+              {/* Product Image */}
+              <div className="h-40 bg-gray-50 rounded-lg overflow-hidden mb-3 flex items-center justify-center">
+                {item.image_urls && item.image_urls.length > 0 && !item.image_urls[0].startsWith('/api/v1') ? (
+                  <img
+                    src={item.image_urls[0]}
+                    alt={item.product_name}
+                    className="w-full h-full object-cover"
+                    onError={e => {
+                      e.target.style.display = 'none'
+                      e.target.nextSibling.style.display = 'flex'
+                    }}
+                  />
+                ) : null}
+                <span
+                  className="text-4xl"
+                  style={{ display: (item.image_urls && item.image_urls.length > 0 && !item.image_urls[0].startsWith('/api/v1')) ? 'none' : 'flex' }}
+                >
+                  📦
+                </span>
               </div>
 
               {/* Product Info */}
