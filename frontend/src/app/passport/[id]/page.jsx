@@ -68,8 +68,15 @@ export default function PassportPage() {
 
       {/* Score Section */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Overall Score Ring */}
-        <div className="bg-white border border-gray-100 rounded-xl p-6 flex flex-col items-center justify-center">
+        {/* Product Image + Overall Score Ring */}
+        <div className="bg-white border border-gray-100 rounded-xl p-6 flex flex-col items-center justify-center gap-4">
+          {passport.image_urls && passport.image_urls.length > 0 && passport.image_urls[0].startsWith('http') && (
+            <img
+              src={passport.image_urls[0]}
+              alt={passport.product_name}
+              className="w-full h-40 object-cover rounded-lg mb-2"
+            />
+          )}
           <div className="relative">
             <ScoreRing score={overallScore} size={160} label="Overall Health" />
           </div>
