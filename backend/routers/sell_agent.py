@@ -157,6 +157,8 @@ async def agent_confirm(
     condition_grade: str = Form("Good"),
     green_impact_kg: float = Form(15),
     image_urls: str = Form("[]"),  # JSON string of URLs
+    listing_scope: str = Form("regional"),  # "local" or "regional"
+    listing_city: str = Form("Mumbai"),
     user: dict = Depends(get_current_user)
 ):
     """Confirm listing — product goes live in marketplace."""
@@ -180,6 +182,10 @@ async def agent_confirm(
         "status": "active",
         "created_at": now,
         "seller_id": user["user_id"],
+        "city": listing_city,
+        "listing_scope": listing_scope,
+        "listing_city": listing_city,
+        "listing_state": user.get("state", ""),
         "green_impact_kg": str(green_impact_kg),
         "green_credits": green_credits,
         "demand_score": 75,
@@ -233,7 +239,7 @@ async def agent_confirm(
         "seller_name": user.get("name", ""),
         "seller_phone": user.get("phone", ""),
         "seller_address": f"{user.get('name', 'User')}'s location",
-        "seller_city": "Mumbai",
+        "seller_city": listing_city,
         "partner_id": "",
         "partner_name": "",
         "warehouse_destination": "WH-MUM-01",

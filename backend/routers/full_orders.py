@@ -46,7 +46,7 @@ PROGRESS_MAP = {
 
 class BuyNowRequest(BaseModel):
     product_id: str
-    buyer_city: Optional[str] = "Bengaluru"
+    buyer_city: Optional[str] = None
     buyer_address: Optional[str] = ""
 
 
@@ -75,8 +75,8 @@ async def create_full_order(request: BuyNowRequest, user: dict = Depends(get_cur
     seller_city = product.get("city", "Mumbai")
 
     # Buyer info
-    buyer_city = request.buyer_city or "Bengaluru"
-    buyer_coords = CITY_COORDS.get(buyer_city, CITY_COORDS["Bengaluru"])
+    buyer_city = request.buyer_city or user.get("city", "Mumbai")
+    buyer_coords = CITY_COORDS.get(buyer_city, CITY_COORDS.get("Mumbai", {"lat": 19.076, "lng": 72.877}))
     seller_coords = CITY_COORDS.get(seller_city, CITY_COORDS["Mumbai"])
 
     order_id = f"ORD-{uuid.uuid4().hex[:8].upper()}"
@@ -172,11 +172,15 @@ async def get_seller_orders(user: dict = Depends(get_current_user)):
 
 @router.get("/full-orders/pickup-queue")
 async def get_pickup_queue(partner: dict = Depends(get_current_delivery_partner)):
-    """Available pickups from sellers (for delivery partners)."""
+    """Available pickups from sellers — filtered to partner's city only."""
     all_orders = await db.scan_table("sl_full_orders", limit=100)
+    partner_city = partner.get("city", "").lower()
+
     available = [
         o for o in all_orders
-        if o.get("pickup_status") == "pending" and o.get("pickup_partner_id") == ""
+        if o.get("pickup_status") == "pending"
+        and o.get("pickup_partner_id") == ""
+        and (not partner_city or o.get("seller_city", "").lower() == partner_city)
     ]
     for o in available:
         o["estimated_earning"] = random.randint(15, 20)
@@ -187,13 +191,16 @@ async def get_pickup_queue(partner: dict = Depends(get_current_delivery_partner)
 
 @router.get("/full-orders/delivery-queue")
 async def get_delivery_queue(partner: dict = Depends(get_current_delivery_partner)):
-    """Available deliveries to buyers (warehouse → buyer doorstep)."""
+    """Available deliveries to buyers — filtered to partner's city only."""
     all_orders = await db.scan_table("sl_full_orders", limit=100)
+    partner_city = partner.get("city", "").lower()
+
     available = [
         o for o in all_orders
         if o.get("delivery_status") == "pending"
         and o.get("delivery_partner_id") == ""
         and o.get("pickup_status") == "completed"
+        and (not partner_city or o.get("buyer_city", "").lower() == partner_city)
     ]
     for o in available:
         o["estimated_earning"] = random.randint(15, 20)
@@ -247,12 +254,17 @@ async def confirm_payment(request: PaymentConfirmRequest, user: dict = Depends(g
         buyer["green_credits"] = int(buyer.get("green_credits", 0)) + 30
         await db.put_item("sl_users", buyer)
 
-    # Credit seller: green credits + record sale
+    # Credit seller: green credits based on listing scope (local=50, regional=30)
     seller_id = order.get("seller_id", "")
     if seller_id:
         seller = await db.get_item("sl_users", {"user_id": seller_id})
         if seller:
-            seller["green_credits"] = int(seller.get("green_credits", 0)) + 50
+            # Check product listing scope for credit amount
+            product = await db.get_item("sl_products", {"product_id": order.get("product_id", "")})
+            listing_scope = product.get("listing_scope", "regional") if product else "regional"
+            seller_credits = 50 if listing_scope == "local" else 30
+
+            seller["green_credits"] = int(seller.get("green_credits", 0)) + seller_credits
             products_sold = seller.get("products_sold", [])
             products_sold.append(order.get("product_id", ""))
             seller["products_sold"] = products_sold
@@ -293,14 +305,13 @@ async def accept_pickup(order_id: str, partner: dict = Depends(get_current_deliv
     await db.put_item("sl_full_orders", order)
 
     return {
-        "message": f"Pickup accepted! Go to seller: {order.get('seller_name')}",
+        "message": f"Pickup accepted! Go to seller: {order.get('seller_name')}. Ask seller for the OTP.",
         "seller_contact": {
             "name": order.get("seller_name"),
             "phone": order.get("seller_phone"),
             "address": order.get("seller_address"),
             "city": order.get("seller_city"),
         },
-        "otp": order.get("pickup_otp"),
         "order_id": order_id,
     }
 
@@ -371,14 +382,13 @@ async def accept_delivery(order_id: str, partner: dict = Depends(get_current_del
     await db.put_item("sl_full_orders", order)
 
     return {
-        "message": f"Delivery accepted! Deliver to: {order.get('buyer_name')}",
+        "message": f"Delivery accepted! Deliver to: {order.get('buyer_name')}. Ask buyer for the OTP.",
         "buyer_contact": {
             "name": order.get("buyer_name"),
             "phone": order.get("buyer_phone"),
             "address": order.get("buyer_address"),
             "city": order.get("buyer_city"),
         },
-        "otp": order.get("delivery_otp"),
     }
 
 

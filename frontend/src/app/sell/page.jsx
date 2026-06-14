@@ -35,10 +35,25 @@ export default function SellPage() {
   async function handleCategorySelect(category) {
     addMessage('user', category)
     setSessionData(prev => ({ ...prev, category }))
-    setStep('image')
+    setStep('scope')
+
+    const userCity = localStorage.getItem('sl_user_city') || 'your city'
 
     setTimeout(() => {
-      addMessage('agent', `Great choice! **${category}** is in demand right now 📈\n\nNow please **upload 1-5 photos** of your product. I'll use AI vision to assess its condition.`)
+      addMessage('agent', `Great choice! **${category}** is in demand right now 📈\n\nWhere would you like to sell this product?`, null, { scopeOptions: true, city: userCity })
+      scrollToBottom()
+    }, 500)
+  }
+
+  function handleScopeSelect(scope) {
+    const userCity = localStorage.getItem('sl_user_city') || 'Mumbai'
+    addMessage('user', scope === 'local' ? `🏠 Local: ${userCity} only` : `🌐 Regional: ${userCity} + nearby cities`)
+    setSessionData(prev => ({ ...prev, listing_scope: scope, listing_city: userCity }))
+    setStep('image')
+
+    const credits = scope === 'local' ? 50 : 30
+    setTimeout(() => {
+      addMessage('agent', `${scope === 'local' ? '🏠' : '🌐'} Got it! Listing for **${scope === 'local' ? userCity + ' only' : userCity + ' + neighbouring cities'}**.\nYou'll earn **+${credits} extra Green Credits** on sale.\n\nNow please **upload 1-5 photos** of your product.`)
       scrollToBottom()
     }, 500)
   }
@@ -124,6 +139,8 @@ export default function SellPage() {
       formData.append('condition_grade', sessionData.ai_assessment?.condition_grade || 'Good')
       formData.append('green_impact_kg', String(sessionData.ai_assessment?.green_impact_kg || 15))
       formData.append('image_urls', JSON.stringify(sessionData.image_urls || []))
+      formData.append('listing_scope', sessionData.listing_scope || 'regional')
+      formData.append('listing_city', sessionData.listing_city || localStorage.getItem('sl_user_city') || 'Mumbai')
 
       const res = await api.post('/api/v1/sell/agent/confirm', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
@@ -178,6 +195,19 @@ export default function SellPage() {
                       {opt}
                     </button>
                   ))}
+                </div>
+              )}
+              {/* Scope options (local vs regional) */}
+              {msg.scopeOptions && step === 'scope' && (
+                <div className="grid grid-cols-1 gap-2 mt-3">
+                  <button onClick={() => handleScopeSelect('local')}
+                    className="px-3 py-2.5 bg-brand-green-light border border-brand-green/30 rounded-lg text-sm font-medium text-brand-green-dark hover:bg-brand-green/20 transition text-left">
+                    🏠 <strong>My City Only</strong> ({msg.city}) — <span className="text-brand-green">+50 extra Green Credits</span>
+                  </button>
+                  <button onClick={() => handleScopeSelect('regional')}
+                    className="px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-brand-blue-light hover:border-brand-blue/30 transition text-left">
+                    🌐 <strong>Neighbouring Cities</strong> — <span className="text-gray-500">+30 Green Credits</span>
+                  </button>
                 </div>
               )}
             </div>

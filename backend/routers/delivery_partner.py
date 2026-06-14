@@ -238,3 +238,16 @@ async def get_earnings_breakdown(partner: dict = Depends(get_current_delivery_pa
             "high_rating_bonus": 3,
         }
     }
+
+
+@router.post("/delivery-partner/update-city")
+async def update_rider_city(data: dict, partner: dict = Depends(get_current_delivery_partner)):
+    """Update delivery partner's city."""
+    city = data.get("city", "")
+    if not city:
+        raise HTTPException(status_code=400, detail="City is required")
+
+    partner["city"] = city
+    await db.put_item("delivery_partners", partner)
+
+    return {"message": f"City updated to {city}", "city": city}

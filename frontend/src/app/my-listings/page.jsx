@@ -160,6 +160,11 @@ export default function MyListingsPage() {
                       </div>
                     )}
 
+                    {/* Expand Search Area — for local-only unsold items */}
+                    {order.listing_scope === 'local' && status !== 'payment_confirmed' && status !== 'sold' && (
+                      <ExpandAreaButton productId={order.product_id} />
+                    )}
+
                     {/* Timeline */}
                     {order.timeline && order.timeline.length > 0 && (
                       <div className="space-y-1.5">
@@ -183,5 +188,42 @@ export default function MyListingsPage() {
         </div>
       )}
     </div>
+  )
+}
+
+function ExpandAreaButton({ productId }) {
+  const [expanded, setExpanded] = useState(false)
+  const [loading, setLoading] = useState(false)
+
+  async function handleExpand() {
+    setLoading(true)
+    try {
+      const res = await api.post(`/api/v1/marketplace/expand-area/${productId}`)
+      if (res.data.listing_scope === 'regional') {
+        setExpanded(true)
+      }
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (expanded) {
+    return (
+      <div className="bg-brand-blue-light border border-brand-blue/20 rounded-lg p-2.5 text-xs text-brand-blue text-center">
+        🌐 Search area expanded to neighbouring cities!
+      </div>
+    )
+  }
+
+  return (
+    <button
+      onClick={handleExpand}
+      disabled={loading}
+      className="w-full px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-xs font-medium text-amber-700 hover:bg-amber-100 transition disabled:opacity-50 text-center"
+    >
+      {loading ? 'Expanding...' : '🌐 Expand search area to neighbouring cities (Green Credits: +30 instead of +50)'}
+    </button>
   )
 }
