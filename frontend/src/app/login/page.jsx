@@ -184,6 +184,22 @@ export default function LoginPage() {
           Create your SecondLife account
         </Link>
       </div>
+
+      {/* Seller link */}
+      <div className="w-full max-w-sm mt-6 pt-4 border-t border-gray-200 text-center">
+        <p className="text-sm text-gray-500">
+          Are you an Amazon Certified Seller?{' '}
+          <Link href="/seller-portal/login" className="text-brand-green font-medium hover:underline">
+            Click here
+          </Link>
+        </p>
+        <p className="text-sm text-gray-500 mt-2">
+          Want to earn as a Delivery Partner?{' '}
+          <Link href="/delivery-portal/login" className="text-brand-amber font-medium hover:underline">
+            Join SecondLife Flex
+          </Link>
+        </p>
+      </div>
     </div>
   )
 }

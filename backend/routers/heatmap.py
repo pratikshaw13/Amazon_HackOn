@@ -30,15 +30,23 @@ async def get_demand_heatmap(category: str):
     result = await demand_agent.run({"category": category})
     city_demand = result.get("city_demand", [])
 
-    # Enrich with coordinates
+    # Enrich with coordinates, buyer counts, and expected days
     enriched = []
     for city_data in city_demand:
         city_name = city_data.get("city", "")
         coords = CITY_COORDS.get(city_name, {"lat": 20.5937, "lng": 78.9629})
+        score = city_data.get("score", 50)
+
+        # Estimate buyer count and resale days from demand score
+        buyer_count = int(score * 12)  # Rough estimate
+        expected_resale_days = max(2, 30 - int(score * 0.28))
+
         enriched.append({
             **city_data,
             "lat": coords["lat"],
-            "lng": coords["lng"]
+            "lng": coords["lng"],
+            "buyer_count": buyer_count,
+            "expected_resale_days": expected_resale_days,
         })
 
     return {

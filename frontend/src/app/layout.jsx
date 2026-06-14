@@ -1,5 +1,6 @@
 import '../styles/globals.css'
 import Navbar from '../components/layout/Navbar'
+import ProtectedRoute from '../components/layout/ProtectedRoute'
 import { AuthProvider } from '../context/AuthContext'
 
 export const metadata = {
@@ -12,10 +13,12 @@ export default function RootLayout({ children }) {
     <html lang="en">
       <body className="bg-gray-50 min-h-screen">
         <AuthProvider>
-          <Navbar />
-          <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            {children}
-          </main>
+          <ProtectedRoute>
+            <Navbar />
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+              {children}
+            </main>
+          </ProtectedRoute>
         </AuthProvider>
       </body>
     </html>

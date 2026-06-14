@@ -2,23 +2,33 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { marketplaceApi } from '../../lib/api'
+import { useSearchParams } from 'next/navigation'
+import { marketplaceApi, searchApi } from '../../lib/api'
 import Badge from '../../components/ui/Badge'
 import LoadingSpinner from '../../components/ui/LoadingSpinner'
 import { CATEGORIES, CONDITION_GRADES, getScoreColor } from '../../lib/constants'
 import { Search, Filter } from 'lucide-react'
 
 export default function MarketplacePage() {
+  const searchParams = useSearchParams()
+  const queryParam = searchParams.get('q') || ''
+
   const [listings, setListings] = useState([])
   const [loading, setLoading] = useState(true)
   const [filters, setFilters] = useState({ category: '', condition: '' })
   const [activeFilter, setActiveFilter] = useState('All')
+  const [searchQuery, setSearchQuery] = useState(queryParam)
 
   const chipFilters = ['All', 'AI Verified', 'Like New', 'Excellent', 'Good', 'Fair']
 
   useEffect(() => {
-    fetchListings()
-  }, [filters])
+    if (queryParam) {
+      setSearchQuery(queryParam)
+      performSearch(queryParam)
+    } else {
+      fetchListings()
+    }
+  }, [queryParam, filters])
 
   async function fetchListings() {
     setLoading(true)
@@ -33,6 +43,28 @@ export default function MarketplacePage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  async function performSearch(query) {
+    if (!query.trim()) {
+      fetchListings()
+      return
+    }
+    setLoading(true)
+    try {
+      const res = await searchApi.search(query)
+      setListings(res.data.results || [])
+    } catch (err) {
+      console.error('Search failed:', err)
+      fetchListings()
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  function handleSearchSubmit(e) {
+    e.preventDefault()
+    performSearch(searchQuery)
   }
 
   const handleChipClick = (chip) => {
@@ -52,8 +84,20 @@ export default function MarketplacePage() {
         <p className="text-gray-500 mt-1">AI-verified pre-owned products with full transparency</p>
       </div>
 
-      {/* Filters */}
+      {/* Search + Filters */}
       <div className="bg-white border border-gray-100 rounded-xl p-4 space-y-3">
+        <form onSubmit={handleSearchSubmit} className="flex gap-2">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search products (e.g., baby monitor, headphones, laptop)..."
+            className="flex-1 px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-green/30 focus:border-brand-green"
+          />
+          <button type="submit" className="px-4 py-2 bg-brand-green text-white rounded-lg text-sm font-medium hover:bg-brand-green-dark">
+            <Search className="h-4 w-4" />
+          </button>
+        </form>
         <div className="flex gap-2 flex-wrap">
           {chipFilters.map(chip => (
             <button
@@ -89,28 +133,20 @@ export default function MarketplacePage() {
           {listings.map((item) => (
             <Link
               key={item.product_id}
-              href={`/passport/${item.product_id}`}
+              href={`/marketplace/${item.product_id}`}
               className="bg-white border border-gray-100 rounded-xl p-4 hover:shadow-md transition-shadow"
             >
-              {/* Product Image */}
-              <div className="h-40 bg-gray-50 rounded-lg overflow-hidden mb-3 flex items-center justify-center">
-                {item.image_urls && item.image_urls.length > 0 && !item.image_urls[0].startsWith('/api/v1') ? (
+              {/* Product Image Area */}
+              <div className="h-32 bg-gray-50 rounded-lg flex items-center justify-center mb-3 overflow-hidden">
+                {item.image_urls && item.image_urls.length > 0 && item.image_urls[0].startsWith('http') ? (
                   <img
                     src={item.image_urls[0]}
                     alt={item.product_name}
-                    className="w-full h-full object-cover"
-                    onError={e => {
-                      e.target.style.display = 'none'
-                      e.target.nextSibling.style.display = 'flex'
-                    }}
+                    className="w-full h-full object-cover rounded-lg"
                   />
-                ) : null}
-                <span
-                  className="text-4xl"
-                  style={{ display: (item.image_urls && item.image_urls.length > 0 && !item.image_urls[0].startsWith('/api/v1')) ? 'none' : 'flex' }}
-                >
-                  📦
-                </span>
+                ) : (
+                  <span className="text-4xl">📦</span>
+                )}
               </div>
 
               {/* Product Info */}

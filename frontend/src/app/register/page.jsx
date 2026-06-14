@@ -63,12 +63,8 @@ export default function RegisterPage() {
         password: formData.password,
         confirm_password: formData.confirm_password,
       })
-      login(res.data.access_token, {
-        user_id: res.data.user_id,
-        name: res.data.name,
-        email: res.data.email,
-      })
-      router.push('/')
+      // Registration successful — redirect to login
+      router.push('/login?registered=true')
     } catch (err) {
       const status = err.response?.status
       const detail = err.response?.data?.detail
@@ -229,6 +225,16 @@ export default function RegisterPage() {
         Already have an account?{' '}
         <Link href="/login" className="text-blue-600 hover:underline font-medium">Sign in</Link>
       </p>
+
+      {/* Seller link */}
+      <div className="w-full max-w-sm mt-6 pt-4 border-t border-gray-200 text-center">
+        <p className="text-sm text-gray-500">
+          Are you an Amazon Certified Seller?{' '}
+          <Link href="/seller-portal/login" className="text-brand-green font-medium hover:underline">
+            Click here
+          </Link>
+        </p>
+      </div>
     </div>
   )
 }

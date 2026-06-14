@@ -88,3 +88,47 @@ async def update_passport(product_id: str, update: PassportUpdate):
     await db.put_item("sl_passports", passport)
 
     return {"message": "Passport updated", "event": new_event}
+
+
+@router.get("/passport/{product_id}/timeline")
+async def get_passport_timeline(product_id: str):
+    """Get complete product lifecycle timeline including routing and transactions."""
+    passport = await db.get_item("sl_passports", {"product_id": product_id})
+    if not passport:
+        raise HTTPException(status_code=404, detail="Passport not found")
+
+    product = await db.get_item("sl_products", {"product_id": product_id})
+
+    # Build comprehensive timeline
+    timeline = []
+
+    # Ownership history events
+    for event in passport.get("ownership_history", []):
+        timeline.append({
+            "type": event.get("event_type"),
+            "date": event.get("date"),
+            "description": event.get("description"),
+            "actor": event.get("actor")
+        })
+
+    # Routing history
+    if product:
+        for routing_event in product.get("routing_history", []):
+            timeline.append({
+                "type": "routing_" + routing_event.get("action", "update"),
+                "date": routing_event.get("at"),
+                "description": f"Routing {routing_event.get('action')}: {routing_event.get('city', '')} / {routing_event.get('warehouse', '')}",
+                "actor": routing_event.get("by")
+            })
+
+    # Sort by date
+    timeline.sort(key=lambda x: x.get("date", ""), reverse=True)
+
+    return {
+        "product_id": product_id,
+        "product_name": passport.get("product_name"),
+        "amazon_verified": passport.get("amazon_verified", False),
+        "condition_grade": passport.get("condition_grade"),
+        "green_credits_generated": int(float(passport.get("green_impact_kg", 0)) * 2),
+        "timeline": timeline
+    }
