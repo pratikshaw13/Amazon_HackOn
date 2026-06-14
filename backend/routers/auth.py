@@ -250,3 +250,20 @@ async def get_current_user(
         raise HTTPException(status_code=404, detail="User not found")
 
     return user
+
+
+@router.post("/auth/update-city")
+async def update_city(data: dict, user: dict = Depends(get_current_user)):
+    """Update user's city and state location."""
+    city = data.get("city", "")
+    state = data.get("state", "")
+    if not city:
+        raise HTTPException(status_code=400, detail="City is required")
+
+    user_record = await db.get_item("sl_users", {"user_id": user["user_id"]})
+    if user_record:
+        user_record["city"] = city
+        user_record["state"] = state
+        await db.put_item("sl_users", user_record)
+
+    return {"message": f"Location updated to {city}, {state}", "city": city, "state": state}

@@ -3,12 +3,14 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { cartApi } from '../../lib/api'
+import { useCart } from '../../context/CartContext'
 import Badge from '../../components/ui/Badge'
 import LoadingSpinner from '../../components/ui/LoadingSpinner'
 import { ShoppingCart, Trash2, CreditCard, Leaf, CheckCircle } from 'lucide-react'
 
 export default function CartPage() {
   const router = useRouter()
+  const { refreshCart, decrementCart } = useCart()
   const [cart, setCart] = useState(null)
   const [loading, setLoading] = useState(true)
   const [checkoutLoading, setCheckoutLoading] = useState(false)
@@ -29,6 +31,7 @@ export default function CartPage() {
 
   async function handleRemove(productId) {
     await cartApi.remove(productId)
+    decrementCart()
     fetchCart()
   }
 
@@ -37,7 +40,8 @@ export default function CartPage() {
     try {
       const res = await cartApi.checkout({ shipping_address: "Demo Address, India" })
       setCheckoutResult(res.data)
-      setCart({ items: [], count: 0, total: 0 })
+      setCart({ items: [], sold_items: [], count: 0, total: 0 })
+      refreshCart()
     } catch (err) {
       console.error(err)
     } finally {
@@ -71,12 +75,27 @@ export default function CartPage() {
   }
 
   const items = cart?.items || []
+  const soldItems = cart?.sold_items || []
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
         <ShoppingCart className="h-6 w-6" /> Shopping Cart
       </h1>
+
+      {/* Sold items notification */}
+      {soldItems.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-2">
+          <p className="text-sm font-medium text-amber-700">⚠️ Some items in your cart are no longer available:</p>
+          {soldItems.map(item => (
+            <div key={item.product_id} className="flex items-center gap-2 text-sm text-gray-500">
+              <span className="line-through">{item.product_name}</span>
+              <span className="text-xs text-red-500 font-medium">— Sold to another buyer</span>
+            </div>
+          ))}
+          <p className="text-xs text-gray-400">These items have been automatically removed from your cart.</p>
+        </div>
+      )}
 
       {items.length === 0 ? (
         <div className="bg-white border border-gray-100 rounded-xl p-12 text-center">

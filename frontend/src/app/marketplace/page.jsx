@@ -36,6 +36,11 @@ export default function MarketplacePage() {
       const params = {}
       if (filters.category) params.category = filters.category
       if (filters.condition) params.condition = filters.condition
+      // Pass buyer's city and state for location-based filtering
+      const userCity = typeof window !== 'undefined' ? localStorage.getItem('sl_user_city') : null
+      const userState = typeof window !== 'undefined' ? localStorage.getItem('sl_user_state') : null
+      if (userCity) params.buyer_city = userCity
+      if (userState) params.buyer_state = userState
       const res = await marketplaceApi.getListings(params)
       setListings(res.data.listings || [])
     } catch (err) {

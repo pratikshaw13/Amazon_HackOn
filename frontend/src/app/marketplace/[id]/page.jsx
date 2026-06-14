@@ -8,10 +8,12 @@ import ProgressBar from '../../../components/ui/ProgressBar'
 import LoadingSpinner from '../../../components/ui/LoadingSpinner'
 import { getScoreColor } from '../../../lib/constants'
 import { ShoppingCart, Zap, Heart, Shield, Leaf, ArrowLeft, CheckCircle } from 'lucide-react'
+import { useCart } from '../../../context/CartContext'
 
 export default function ProductDetailPage() {
   const params = useParams()
   const router = useRouter()
+  const { incrementCart } = useCart()
   const [product, setProduct] = useState(null)
   const [passport, setPassport] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -36,10 +38,9 @@ export default function ProductDetailPage() {
   async function handleBuyNow() {
     setActionLoading(true)
     try {
-      const res = await fullOrdersApi.buy({ product_id: params.id, buyer_city: 'Bengaluru' })
+      const res = await fullOrdersApi.buy({ product_id: params.id, buyer_city: localStorage.getItem('sl_user_city') || 'Mumbai' })
       setActionMsg(`${res.data.message} Redirecting to tracking...`)
       setProduct(prev => ({ ...prev, status: 'sold' }))
-      // Redirect to order tracking after 2 seconds
       setTimeout(() => {
         router.push(`/orders/${res.data.order_id}`)
       }, 2000)
@@ -53,7 +54,8 @@ export default function ProductDetailPage() {
   async function handleAddToCart() {
     try {
       const res = await cartApi.add(params.id)
-      setActionMsg(res.data.message)
+      setActionMsg('✅ Added to cart!')
+      incrementCart()
     } catch (err) {
       setActionMsg(err.response?.data?.detail || 'Failed to add to cart')
     }

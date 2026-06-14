@@ -22,23 +22,38 @@ class CheckoutRequest(BaseModel):
 
 @router.get("/cart")
 async def get_cart(user: dict = Depends(get_current_user)):
-    """Get current user's cart items with product details."""
+    """Get current user's cart items with product details. Flags sold items."""
     cart_items = user.get("cart", [])
 
     # Fetch product details for each cart item
-    products = []
+    available_products = []
+    sold_products = []
+
     for product_id in cart_items:
         product = await db.get_item("sl_products", {"product_id": product_id})
-        if product and product.get("status") == "active":
-            products.append(product)
+        if not product:
+            continue
+        if product.get("status") == "active":
+            available_products.append(product)
+        else:
+            # Product was sold/reserved by someone else
+            product["_sold_message"] = "This item was purchased by another buyer"
+            sold_products.append(product)
 
-    total = sum(float(p.get("estimated_value", 0)) for p in products)
+    # Auto-remove sold items from user's cart
+    if sold_products:
+        updated_cart = [p for p in cart_items if p not in [s.get("product_id") for s in sold_products]]
+        user["cart"] = updated_cart
+        await db.put_item("sl_users", user)
+
+    total = sum(float(p.get("estimated_value", 0)) for p in available_products)
 
     return {
-        "items": products,
-        "count": len(products),
+        "items": available_products,
+        "sold_items": sold_products,
+        "count": len(available_products),
         "total": total,
-        "green_credits_on_purchase": len(products) * 30
+        "green_credits_on_purchase": len(available_products) * 30
     }
 
 
@@ -78,7 +93,8 @@ async def remove_from_cart(product_id: str, user: dict = Depends(get_current_use
 
 @router.post("/cart/checkout")
 async def checkout(request: CheckoutRequest, user: dict = Depends(get_current_user)):
-    """Purchase all items in cart."""
+    """Purchase all items in cart as bulk order (creates full orders for each)."""
+    import random
     cart = user.get("cart", [])
     if not cart:
         raise HTTPException(status_code=400, detail="Cart is empty")
@@ -86,6 +102,15 @@ async def checkout(request: CheckoutRequest, user: dict = Depends(get_current_us
     purchased = []
     total_spent = 0
     total_green_credits = 0
+    order_ids = []
+
+    now = datetime.utcnow().isoformat()
+    buyer_city = user.get("city", "Mumbai")  # Use user's actual city from profile
+
+    CITY_COORDS = {
+        "Mumbai": {"lat": 19.076, "lng": 72.877}, "Delhi": {"lat": 28.613, "lng": 77.209},
+        "Bengaluru": {"lat": 12.971, "lng": 77.594}, "Hyderabad": {"lat": 17.385, "lng": 78.486},
+    }
 
     for product_id in cart:
         product = await db.get_item("sl_products", {"product_id": product_id})
@@ -93,53 +118,82 @@ async def checkout(request: CheckoutRequest, user: dict = Depends(get_current_us
             continue
 
         price = float(product.get("estimated_value", 0))
-        transaction_id = str(uuid.uuid4())
-        now = datetime.utcnow().isoformat()
+        seller_id = product.get("seller_id", "")
+        seller = await db.get_item("sl_users", {"user_id": seller_id})
+        seller_name = seller.get("name", "Seller") if seller else "Seller"
+        seller_phone = seller.get("phone", "") if seller else ""
+        seller_city = product.get("city", "Mumbai")
 
-        # Create transaction
-        transaction = {
-            "transaction_id": transaction_id,
-            "timestamp": now,
+        order_id = f"ORD-{uuid.uuid4().hex[:8].upper()}"
+        pickup_otp = str(random.randint(1000, 9999))
+        delivery_otp = str(random.randint(1000, 9999))
+
+        buyer_coords = CITY_COORDS.get(buyer_city, {"lat": 12.971, "lng": 77.594})
+        seller_coords = CITY_COORDS.get(seller_city, {"lat": 19.076, "lng": 72.877})
+
+        # Create full order
+        order = {
+            "order_id": order_id,
             "product_id": product_id,
-            "buyer_id": user["user_id"],
-            "seller_id": product.get("seller_id", "unknown"),
-            "transaction_type": "buy",
+            "product_name": product.get("product_name", ""),
+            "product_image": (product.get("image_urls") or [""])[0],
+            "category": product.get("category", ""),
             "price": str(price),
-            "condition_grade": product.get("condition_grade", ""),
-            "warehouse_location": product.get("city", ""),
-            "status": "completed",
-            "shipping_address": request.shipping_address,
+            "buyer_id": user["user_id"],
+            "buyer_name": user.get("name", ""),
+            "buyer_phone": user.get("phone", ""),
+            "buyer_city": buyer_city,
+            "buyer_address": request.shipping_address or f"{user.get('name', 'Buyer')}'s address, {buyer_city}",
+            "buyer_lat": str(buyer_coords["lat"]),
+            "buyer_lng": str(buyer_coords["lng"]),
+            "seller_id": seller_id,
+            "seller_name": seller_name,
+            "seller_phone": seller_phone,
+            "seller_city": seller_city,
+            "seller_address": f"{seller_name}'s location, {seller_city}",
+            "seller_lat": str(seller_coords["lat"]),
+            "seller_lng": str(seller_coords["lng"]),
+            "pickup_partner_id": "",
+            "pickup_partner_name": "",
+            "pickup_otp": pickup_otp,
+            "pickup_status": "pending",
+            "delivery_partner_id": "",
+            "delivery_partner_name": "",
+            "delivery_otp": delivery_otp,
+            "delivery_status": "pending",
+            "progress_pct": 5,
+            "status": "order_placed",
+            "is_intercity": seller_city != buyer_city,
+            "payment_done": False,
+            "payment_method": "",
+            "payment_reference": "",
+            "timeline": [{"status": "order_placed", "timestamp": now, "note": f"Order placed (bulk checkout)"}],
+            "created_at": now,
+            "completed_at": "",
         }
-        await db.put_item("sl_transactions", transaction)
+        await db.put_item("sl_full_orders", order)
 
-        # Update product status
+        # Mark product as sold
         product["status"] = "sold"
         product["buyer_id"] = user["user_id"]
+        product["order_id"] = order_id
         product["sold_at"] = now
         await db.put_item("sl_products", product)
 
-        purchased.append({
-            "product_name": product.get("product_name"),
-            "price": price,
-            "transaction_id": transaction_id
-        })
+        purchased.append({"product_name": product.get("product_name"), "price": price, "order_id": order_id})
+        order_ids.append(order_id)
         total_spent += price
         total_green_credits += 30
 
-    # Clear cart and update user
+    # Clear cart
     user["cart"] = []
-    orders = user.get("orders", [])
-    orders.extend([p["transaction_id"] for p in purchased])
-    user["orders"] = orders
-    bought = user.get("products_bought", [])
-    bought.extend([product_id for product_id in cart if any(p["transaction_id"] for p in purchased)])
-    user["products_bought"] = bought
     user["green_credits"] = int(user.get("green_credits", 0)) + total_green_credits
     await db.put_item("sl_users", user)
 
     return {
-        "message": f"Successfully purchased {len(purchased)} items!",
+        "message": f"Successfully ordered {len(purchased)} items! Track them in My Orders.",
         "items_purchased": purchased,
+        "order_ids": order_ids,
         "total_spent": total_spent,
         "green_credits_earned": total_green_credits
     }

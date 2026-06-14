@@ -67,11 +67,9 @@ export default function PickupsPage() {
         </div>
 
         {/* OTP Card */}
-        <div className="bg-white border-2 border-amber-300 rounded-xl p-6 text-center">
-          <p className="text-xs text-gray-400 uppercase font-medium mb-2">Verification OTP</p>
-          <p className="text-4xl font-bold tracking-widest text-amber-600">{acceptedData.otp}</p>
-          <p className="text-xs text-gray-500 mt-2">
-            {isPickup ? "Show this to seller when picking up" : "Buyer will confirm with this code"}
+        <div className="bg-white border border-gray-100 rounded-xl p-5 text-center">
+          <p className="text-sm text-gray-600">
+            Go to the {isPickup ? 'seller' : 'buyer'} and <strong>ask them for the OTP</strong>. Enter it on the Active Delivery page to verify.
           </p>
         </div>
 

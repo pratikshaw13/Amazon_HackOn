@@ -71,13 +71,15 @@ async def get_listings(
     category: Optional[str] = Query(None),
     condition: Optional[str] = Query(None),
     city: Optional[str] = Query(None),
+    buyer_city: Optional[str] = Query(None),
+    buyer_state: Optional[str] = Query(None),
     min_price: Optional[float] = Query(None),
     max_price: Optional[float] = Query(None),
     sort_by: Optional[str] = Query("created_at"),
     limit: int = Query(20, le=50)
 ):
-    """Browse marketplace listings with filters. Returns fresh S3 image URLs."""
-    items = await db.scan_table("sl_products", limit=limit)
+    """Browse marketplace listings filtered by buyer's state for location-based visibility."""
+    items = await db.scan_table("sl_products", limit=200)
 
     # Apply filters in-memory
     filtered = []
@@ -88,6 +90,27 @@ async def get_listings(
             continue
         if condition and item.get("condition_grade", "").lower() != condition.lower():
             continue
+
+        # State-based visibility filter
+        if buyer_state:
+            listing_scope = item.get("listing_scope", "")
+            listing_state = item.get("listing_state", "")
+            listing_city = item.get("listing_city", item.get("city", ""))
+
+            if listing_scope == "regional":
+                # Regional = national visibility (all states can see)
+                pass
+            elif listing_state:
+                # Has a state set — only visible to same state buyers
+                if buyer_state.lower() != listing_state.lower():
+                    continue
+            elif listing_city:
+                # No state stored, but has city — try to match via city→state map
+                from routers._city_state_map import CITY_STATE_MAP
+                product_state = CITY_STATE_MAP.get(listing_city, "")
+                if product_state and buyer_state.lower() != product_state.lower():
+                    continue
+            # If no state, no city, no scope (truly old data) — show to everyone as fallback
 
         # Price filter
         est_value = float(item.get("estimated_value", 0))
@@ -107,6 +130,9 @@ async def get_listings(
         filtered.sort(key=lambda x: int(x.get("condition_score", 0)), reverse=True)
     else:
         filtered.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+
+    # Apply response limit
+    filtered = filtered[:limit]
 
     return {
         "listings": filtered,
@@ -133,4 +159,23 @@ async def get_listing_detail(product_id: str):
     return {
         "product": product,
         "passport": passport
+    }
+
+
+@router.post("/marketplace/expand-area/{product_id}")
+async def expand_listing_area(product_id: str):
+    """Expand a local listing to regional (neighbouring cities)."""
+    product = await db.get_item("sl_products", {"product_id": product_id})
+    if not product:
+        return {"error": "Product not found"}
+    if product.get("listing_scope") == "regional":
+        return {"message": "Already listed for neighbouring cities", "listing_scope": "regional"}
+
+    product["listing_scope"] = "regional"
+    await db.put_item("sl_products", product)
+
+    return {
+        "message": "Search area expanded! Your product is now visible to neighbouring cities.",
+        "listing_scope": "regional",
+        "note": "Green credits on sale will be +30 instead of +50"
     }

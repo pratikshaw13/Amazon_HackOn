@@ -3,18 +3,19 @@
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
-import { Leaf, Menu, X, ChevronDown, User, Search } from 'lucide-react'
+import { Leaf, Menu, X, ChevronDown, User, Search, ShoppingCart } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import { useCart } from '../../context/CartContext'
+import CitySelector from '../features/CitySelector'
 
 const navItems = [
   { href: '/', label: 'Dashboard' },
-  { href: '/sell', label: 'Sell / Donate' },
+  { href: '/sell', label: 'Sell Items' },
   { href: '/marketplace', label: 'Marketplace' },
   { href: '/my-listings', label: 'My Listings' },
   { href: '/orders', label: 'Orders' },
   { href: '/heatmap', label: 'Demand Map' },
-  { href: '/routing', label: 'Routing' },
-  { href: '/seller', label: 'Seller Portal' },
+  { href: '/seller-portal/login', label: 'Seller Portal' },
   { href: '/prevention', label: 'Return Shield' },
   { href: '/green', label: 'Green Credits' },
 ]
@@ -23,6 +24,7 @@ export default function Navbar() {
   const pathname = usePathname()
   const router = useRouter()
   const { user, isAuthenticated, logout } = useAuth()
+  const { cartCount, badgeVisible } = useCart()
 
   const [mobileOpen, setMobileOpen] = useState(false)
   const [dropdownOpen, setDropdownOpen] = useState(false)
@@ -76,8 +78,11 @@ export default function Navbar() {
               </span>
             </Link>
 
-            {/* Search Bar */}
-            <form onSubmit={handleSearch} className="flex-1 max-w-2xl">
+            {/* City Selector — BookMyShow style */}
+            {isAuthenticated && <CitySelector />}
+
+            {/* Search Bar — centered */}
+            <form onSubmit={handleSearch} className="flex-1 max-w-xl mx-auto">
               <div className="flex">
                 <input
                   type="text"
@@ -96,8 +101,21 @@ export default function Navbar() {
               </div>
             </form>
 
-            {/* User Section */}
+            {/* Cart + User — extreme right */}
             <div className="flex items-center gap-3 flex-shrink-0">
+              {/* Cart Icon */}
+              {isAuthenticated && (
+                <Link href="/cart" className="relative p-2 text-gray-300 hover:text-white transition">
+                  <ShoppingCart className="h-5 w-5" />
+                  {cartCount > 0 && badgeVisible && (
+                    <span className="absolute -top-0.5 -right-0.5 bg-brand-amber text-[10px] font-bold text-white rounded-full flex items-center justify-center min-w-[18px] h-[18px]">
+                      {cartCount}
+                    </span>
+                  )}
+                </Link>
+              )}
+
+            {/* User Section */}
               {isAuthenticated ? (
                 <div className="relative" ref={dropdownRef}>
                   <button
@@ -153,7 +171,7 @@ export default function Navbar() {
       <div className="bg-gray-800 text-white border-t border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Desktop nav */}
-          <div className="hidden md:flex items-center gap-0.5 h-10 overflow-x-auto">
+          <div className="hidden md:flex items-center justify-center gap-1 h-10 overflow-x-auto">
             {navItems.map((item) => {
               const isActive = pathname === item.href ||
                 (item.href !== '/' && pathname.startsWith(item.href))
