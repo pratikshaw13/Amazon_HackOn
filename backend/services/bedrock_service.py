@@ -36,7 +36,12 @@ class BedrockService:
                 "bedrock-runtime",
                 aws_access_key_id=aws_key,
                 aws_secret_access_key=aws_secret,
-                region_name=self.bedrock_region
+                region_name=self.bedrock_region,
+                config=boto3.session.Config(
+                    connect_timeout=3,
+                    read_timeout=10,
+                    retries={"max_attempts": 1}  # No retries — fail fast
+                )
             )
             self.available = True
             print(f"✅ Bedrock AI initialized (region: {self.bedrock_region}, model: {self.text_model_id})")
@@ -97,28 +102,7 @@ class BedrockService:
             text_parts = [block["text"] for block in output_message["content"] if "text" in block]
             return " ".join(text_parts)
         except Exception as e:
-            err_str = str(e)
-            if "ThrottlingException" in err_str or "Too many tokens" in err_str:
-                # Try fallback model with separate quota
-                fallback_models = ["amazon.nova-micro-v1:0", "amazon.nova-lite-v1:0"]
-                for fallback in fallback_models:
-                    if fallback == self.vision_model_id:
-                        continue
-                    try:
-                        # Nova Micro doesn't support images, use text-only prompt
-                        text_messages = [{"role": "user", "content": [{"text": prompt + "\n\nNote: I cannot see the actual images but please provide realistic varied scores based on a typical used " + "product in this category. Do NOT use example scores from the prompt — generate unique realistic values."}]}]
-                        response = self.client.converse(
-                            modelId=fallback,
-                            messages=text_messages,
-                            inferenceConfig={"maxTokens": max_tokens, "temperature": 0.9}
-                        )
-                        output_message = response["output"]["message"]
-                        text_parts = [block["text"] for block in output_message["content"] if "text" in block]
-                        print(f"   Used fallback model: {fallback}")
-                        return " ".join(text_parts)
-                    except Exception:
-                        continue
-            # Re-raise if no fallback worked
+            # Don't retry internally — let the chain handle failover
             raise
 
     def _parse_json_response(self, text: str) -> dict:
@@ -156,26 +140,40 @@ class BedrockService:
         if not self.available:
             return self._fallback_condition_response(category)
 
-        prompt = f"""You are an expert product inspector working for Amazon's quality team.
-Analyse these {len(images_base64)} photos of a {category} product{f' ({product_name})' if product_name else ''}.
+        prompt = f"""You are a senior product appraiser at Amazon SecondLife with 10 years of experience grading pre-owned consumer goods. You inspect items for resale certification.
 
-Identify and score each of the following (0-100):
-- Surface condition (scratches, dents, discolouration)
-- Functional parts integrity
-- Accessories completeness
-- Packaging quality
+PRODUCT: {product_name or 'Unidentified'} | Category: {category} | Images: {len(images_base64)}
 
-Return ONLY valid JSON, no other text whatsoever:
-{{"surface": 85, "parts": 90, "accessories": 70, "packaging": 60, "overall": 78, "grade": "Excellent", "defects_found": ["minor scratch on corner"], "missing_accessories": ["original box"], "reasoning": "The product shows minimal wear..."}}
+INSPECTION TASK:
+Examine the {len(images_base64)} uploaded photo(s) carefully. Score each dimension from 0-100:
 
-Scoring guide:
-- 90-100: Like New (no visible wear)
-- 75-89: Excellent (minimal wear, fully functional)
-- 60-74: Good (visible wear, fully functional)
-- 40-59: Fair (significant wear, functional with minor issues)
-- 0-39: Needs Refurbishment (major issues)
+SCORING DIMENSIONS (with weights):
+1. SURFACE (30% weight): Scratches, dents, chips, discoloration, stains, scuffs, paint wear, rust spots
+2. FUNCTIONAL PARTS (40% weight): Buttons, ports, hinges, screens, motors, moving parts, structural integrity
+3. ACCESSORIES (20% weight): Original box, charger, manual, cables, remote, stand, protective case
+4. PACKAGING (10% weight): Shipping-safe packaging available, bubble wrap, foam inserts
 
-Be specific about actual defects you see in the images. Vary your scores based on what you actually observe. Return ONLY the JSON object."""
+GRADING SCALE:
+- 90-100: Like New — Unboxed feel, zero visible wear, all accessories present
+- 75-89: Excellent — Hairline scratches only, 100% functional, most accessories
+- 60-74: Good — Visible wear (light scratches/scuffs), fully functional, some accessories missing
+- 40-59: Fair — Noticeable damage (dents/deep scratches), minor functional issues possible
+- 0-39: Poor — Significant damage, needs repair/refurbishment before resale
+
+CATEGORY-SPECIFIC CHECKS ({category}):
+- Electronics/Laptops/Smartphones: Screen condition, port wear, battery health indicators, hinge tightness
+- Furniture: Structural stability, fabric condition, wood finish, hardware condition
+- Fashion: Fabric pilling, color fading, zipper/button function, stain presence
+- Kitchen/Appliances: Motor/heating element indicators, surface rust, seal condition
+
+CRITICAL RULES:
+- Report ONLY defects you can actually SEE in the images
+- Do NOT invent or hallucinate defects not visible
+- If image is unclear, lower your confidence score
+- Each score must be independently assessed — do NOT copy one score across all dimensions
+
+Return ONLY valid JSON object (no markdown blocks, no explanation text):
+{{"surface": <int 0-100>, "parts": <int 0-100>, "accessories": <int 0-100>, "packaging": <int 0-100>, "overall": <int 0-100>, "grade": "<Like New|Excellent|Good|Fair|Poor>", "defects_found": ["<specific visible defect 1>", "<defect 2>"], "missing_accessories": ["<item not visible>"], "reasoning": "<2-3 sentence assessment summary>", "confidence": <float 0.0-1.0>}}"""
 
         try:
             result_text = self._converse_with_images(prompt, images_base64)
@@ -186,16 +184,18 @@ Be specific about actual defects you see in the images. Vary your scores based o
             print(f"⚠️  Bedrock JSON parse error: {e}")
             if 'result_text' in locals():
                 print(f"   Raw response: {result_text[:300]}")
-            return self._fallback_condition_response(category)
+            # Raise so the chain can cascade to next provider
+            raise RuntimeError(f"Bedrock JSON parse error: {e}")
         except Exception as e:
             err_str = str(e)
             if "ThrottlingException" in err_str or "Too many tokens" in err_str:
-                print(f"⚠️  Bedrock THROTTLED: Daily token limit reached. Using fallback scores.")
-                print(f"   Fix: Wait until tomorrow or upgrade your AWS Bedrock quota.")
+                print(f"⚠️  Bedrock THROTTLED: Daily token limit reached.")
+                # Raise so the chain cascades to Gemini/Ollama
+                raise RuntimeError(f"Bedrock throttled: {err_str[:100]}")
             else:
                 print(f"⚠️  Bedrock Vision error: {e}")
-                traceback.print_exc()
-            return self._fallback_condition_response(category)
+                # Raise so the chain cascades
+                raise RuntimeError(f"Bedrock error: {err_str[:100]}")
 
     async def get_routing_decision(self, condition_score: int, category: str,
                                     demand_level: str, original_price: float,
@@ -204,25 +204,40 @@ Be specific about actual defects you see in the images. Vary your scores based o
         if not self.available:
             return self._fallback_routing_response(condition_score, original_price)
 
-        prompt = f"""Given this product data, decide the optimal routing for resale.
+        prompt = f"""You are Amazon SecondLife's pricing and routing engine. Determine the optimal resale path and price.
 
-Condition score: {condition_score}/100
-Category: {category}
-Demand level: {demand_level}
-Original price: ₹{original_price}
-{f'Context: {rag_context}' if rag_context else ''}
+PRODUCT DATA:
+- Condition Score: {condition_score}/100
+- Category: {category}
+- Demand Level: {demand_level}
+- Original Purchase Price: ₹{int(original_price):,}
+{f'- Market Context: {rag_context}' if rag_context else ''}
 
-Options: "direct_resale", "refurbish_then_sell", "peer_to_peer", "donate", "recycle"
+PRICING FORMULA (adjust based on demand):
+- Like New (90-100): 65-80% of original × demand_multiplier
+- Excellent (75-89): 50-65% of original × demand_multiplier
+- Good (60-74): 35-50% of original × demand_multiplier
+- Fair (40-59): 20-35% of original × demand_multiplier
+- Poor (0-39): 10-20% of original (donate/recycle territory)
 
-Rules:
-- Score 80+ with high demand → direct_resale at 60-75% of original
-- Score 80+ with low demand → direct_resale at 50-60%
-- Score 60-79 → direct_resale at 40-55% or refurbish_then_sell
-- Score 40-59 → refurbish_then_sell or donate
-- Score <40 → recycle
+DEMAND MULTIPLIERS:
+- Very High demand: ×1.1
+- High demand: ×1.0
+- Medium demand: ×0.9
+- Low demand: ×0.75
+
+ROUTING DECISION MATRIX:
+- "direct_resale": Condition 60+ AND demand Medium+ (fastest, best margin)
+- "refurbish_then_sell": Condition 40-70 AND item value > ₹5000 (worth repair cost)
+- "peer_to_peer": Condition 50+ AND niche/hobby category (specialized buyers)
+- "donate": Condition < 40 OR demand Low AND item value < ₹2000
+- "recycle": Structural damage, safety hazard, or zero resale value
+
+BUYBACK OFFER = 60-70% of estimated_value (instant cash for seller)
+TIME TO SELL = Based on demand (Very High: 2-4 days, High: 5-7, Medium: 8-14, Low: 15-30)
 
 Return ONLY valid JSON:
-{{"action": "direct_resale", "reasoning": "High condition with strong demand", "estimated_value": 12000, "buyback_offer": 7800, "confidence": 0.85, "time_to_sell_days": 5}}"""
+{{"action": "<routing_option>", "reasoning": "<1-2 sentences explaining the decision>", "estimated_value": <int in rupees>, "buyback_offer": <int in rupees>, "confidence": <float 0.0-1.0>, "time_to_sell_days": <int>}}"""
 
         try:
             messages = [{"role": "user", "content": [{"text": prompt}]}]
@@ -230,22 +245,32 @@ Return ONLY valid JSON:
             return self._parse_json_response(result_text)
         except Exception as e:
             print(f"Bedrock routing error: {e}")
-            return self._fallback_routing_response(condition_score, original_price)
+            raise RuntimeError(f"Bedrock routing error: {str(e)[:100]}")
 
     async def get_demand_forecast(self, category: str) -> dict:
         """Get demand forecast across Indian cities."""
         if not self.available:
             return self._fallback_demand_response(category)
 
-        prompt = f"""Predict current resale demand for used {category} across major Indian cities.
-Consider: tech hub density, income levels, student population, typical buyers.
+        prompt = f"""You are Amazon's market intelligence system. Predict current resale demand for pre-owned {category} products across India's top 12 metro cities.
 
-Cities: Mumbai, Delhi, Bengaluru, Hyderabad, Chennai, Pune, Kolkata, Ahmedabad, Jaipur, Kochi, Lucknow, Chandigarh
+FACTORS TO CONSIDER PER CITY:
+- Tech adoption rate and IT sector presence
+- Average household income and spending power
+- Student/young professional population density
+- Existing secondhand market maturity
+- Category-specific demand ({category}: who typically buys these used?)
 
-Return ONLY valid JSON:
-{{"city_demand": [{{"city": "Bengaluru", "demand": "Very High", "score": 92, "reasoning": "Tech hub"}}, {{"city": "Mumbai", "demand": "High", "score": 78, "reasoning": "Large market"}}]}}
+CITIES TO EVALUATE: Mumbai, Delhi, Bengaluru, Hyderabad, Chennai, Pune, Kolkata, Ahmedabad, Jaipur, Kochi, Lucknow, Chandigarh
 
-Include all 12 cities with scores 0-100 and demand levels: Very High, High, Medium, or Low."""
+DEMAND SCORING (0-100):
+- 80-100: Very High — sells within 2-4 days, multiple buyers competing
+- 60-79: High — sells within 5-7 days, steady interest
+- 40-59: Medium — sells within 8-14 days, occasional interest
+- 0-39: Low — may take 15-30+ days, limited buyers
+
+Return ONLY valid JSON (all 12 cities, sorted by score descending):
+{{"city_demand": [{{"city": "<name>", "demand": "<Very High|High|Medium|Low>", "score": <int 0-100>, "reasoning": "<brief city-specific reason>"}}]}}"""
 
         try:
             messages = [{"role": "user", "content": [{"text": prompt}]}]
@@ -253,7 +278,7 @@ Include all 12 cities with scores 0-100 and demand levels: Very High, High, Medi
             return self._parse_json_response(result_text)
         except Exception as e:
             print(f"Bedrock demand error: {e}")
-            return self._fallback_demand_response(category)
+            raise RuntimeError(f"Bedrock demand error: {str(e)[:100]}")
 
     async def get_return_risk(self, product_name: str, category: str,
                               user_history: list) -> dict:

@@ -14,6 +14,7 @@ const navItems = [
   { href: '/marketplace', label: 'Marketplace' },
   { href: '/my-listings', label: 'My Listings' },
   { href: '/orders', label: 'Orders' },
+  { href: '/returns', label: 'Returns' },
   { href: '/heatmap', label: 'Demand Map' },
   { href: '/seller-portal/login', label: 'Seller Portal' },
   { href: '/prevention', label: 'Return Shield' },

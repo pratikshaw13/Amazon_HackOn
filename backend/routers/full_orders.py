@@ -252,6 +252,22 @@ async def confirm_payment(request: PaymentConfirmRequest, user: dict = Depends(g
     buyer = await db.get_item("sl_users", {"user_id": user["user_id"]})
     if buyer:
         buyer["green_credits"] = int(buyer.get("green_credits", 0)) + 30
+        buyer["total_earned"] = int(buyer.get("total_earned", 0)) + 30
+        # Add to credit history
+        credit_history = buyer.get("credit_history", [])
+        credit_history.append({
+            "id": order.get("order_id", "")[:8],
+            "action": "buy",
+            "type": "earn",
+            "credits": 30,
+            "co2_saved": 8.0,
+            "product_id": order.get("product_id", ""),
+            "description": f"Purchased: {order.get('product_name', 'Product')}",
+            "timestamp": now,
+        })
+        buyer["credit_history"] = credit_history
+        buyer["products_saved"] = int(buyer.get("products_saved", 0)) + 1
+        buyer["co2_saved_kg"] = float(buyer.get("co2_saved_kg", 0)) + 8.0
         await db.put_item("sl_users", buyer)
 
     # Credit seller: green credits based on listing scope (local=50, regional=30)
@@ -265,11 +281,39 @@ async def confirm_payment(request: PaymentConfirmRequest, user: dict = Depends(g
             seller_credits = 50 if listing_scope == "local" else 30
 
             seller["green_credits"] = int(seller.get("green_credits", 0)) + seller_credits
+            seller["total_earned"] = int(seller.get("total_earned", 0)) + seller_credits
+            # Add to credit history
+            seller_history = seller.get("credit_history", [])
+            seller_history.append({
+                "id": order.get("order_id", "")[:8],
+                "action": "sell",
+                "type": "earn",
+                "credits": seller_credits,
+                "co2_saved": 12.0,
+                "product_id": order.get("product_id", ""),
+                "description": f"Sold: {order.get('product_name', 'Product')} (+₹{order.get('price', 0)})",
+                "timestamp": now,
+            })
+            seller["credit_history"] = seller_history
+            seller["products_saved"] = int(seller.get("products_saved", 0)) + 1
+            seller["co2_saved_kg"] = float(seller.get("co2_saved_kg", 0)) + 12.0
+
             products_sold = seller.get("products_sold", [])
             products_sold.append(order.get("product_id", ""))
             seller["products_sold"] = products_sold
-            seller["total_earned"] = str(float(seller.get("total_earned", 0)) + float(order.get("price", 0)))
+            seller["total_revenue"] = str(float(seller.get("total_revenue", 0)) + float(order.get("price", 0)))
             await db.put_item("sl_users", seller)
+
+    # Increment demand score for this city+category
+    buyer_city = order.get("buyer_city", "")
+    product_category = order.get("category", "")
+    if buyer_city and product_category:
+        demand_record = await db.get_item("sl_demand_scores", {"city": buyer_city, "category": product_category})
+        if demand_record:
+            demand_record["demand_score"] = min(99, int(demand_record.get("demand_score", 50)) + 2)
+            demand_record["buyer_count"] = int(demand_record.get("buyer_count", 0)) + 1
+            demand_record["last_updated"] = now
+            await db.put_item("sl_demand_scores", demand_record)
 
     return {
         "message": "Payment confirmed! Order complete. Seller has been credited.",
@@ -352,6 +396,16 @@ async def complete_pickup(order_id: str, otp: str, partner: dict = Depends(get_c
     partner["total_deliveries"] = int(partner.get("total_deliveries", 0)) + 1
     partner["total_earnings"] = str(float(partner.get("total_earnings", 0)) + 18)
     partner["green_credits_earned"] = int(partner.get("green_credits_earned", 0)) + 15
+    # Add to green credits history
+    gc_history = partner.get("green_credits_history", [])
+    gc_history.append({
+        "credits": 15,
+        "type": "earn",
+        "reason": f"Pickup completed: {order.get('product_name', 'Product')}",
+        "order_id": order_id,
+        "timestamp": now,
+    })
+    partner["green_credits_history"] = gc_history
     await db.put_item("delivery_partners", partner)
 
     return {"message": "Pickup complete! Product at warehouse.", "progress_pct": order["progress_pct"]}
@@ -417,6 +471,16 @@ async def complete_delivery(order_id: str, otp: str, partner: dict = Depends(get
     partner["total_deliveries"] = int(partner.get("total_deliveries", 0)) + 1
     partner["total_earnings"] = str(float(partner.get("total_earnings", 0)) + 18)
     partner["green_credits_earned"] = int(partner.get("green_credits_earned", 0)) + 15
+    # Add to green credits history
+    gc_history = partner.get("green_credits_history", [])
+    gc_history.append({
+        "credits": 15,
+        "type": "earn",
+        "reason": f"Delivery completed: {order.get('product_name', 'Product')}",
+        "order_id": order_id,
+        "timestamp": now,
+    })
+    partner["green_credits_history"] = gc_history
     await db.put_item("delivery_partners", partner)
 
     return {"message": "Delivered to buyer! Awaiting payment.", "progress_pct": 95}

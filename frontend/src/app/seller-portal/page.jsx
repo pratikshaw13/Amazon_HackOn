@@ -16,17 +16,20 @@ function sellerApi(path) {
 export default function SellerPortalDashboard() {
   const [stats, setStats] = useState(null)
   const [profile, setProfile] = useState(null)
+  const [warehouseData, setWarehouseData] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function fetch() {
       try {
-        const [profileRes, statsRes] = await Promise.all([
+        const [profileRes, statsRes, whRes] = await Promise.all([
           sellerApi('/api/v1/certified-seller/dashboard-stats'),
           sellerApi('/api/v1/seller-inventory/stats'),
+          sellerApi('/api/v1/certified-seller/warehouses'),
         ])
         setProfile(profileRes.data)
         setStats(statsRes.data)
+        setWarehouseData(whRes.data)
       } catch (err) {
         console.error(err)
       } finally {
@@ -135,11 +138,12 @@ export default function SellerPortalDashboard() {
       </div>
 
       {/* Quick Links */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <QuickAction href="/seller-portal/inventory" icon="📦" label="View All Inventory" desc="Filter & manage" />
-        <QuickAction href="/seller-portal/returns" icon="↩️" label="Manage Returns" desc={`${s.returned || 0} items`} />
-        <QuickAction href="/seller-portal/rescue" icon="🚀" label="Rescue Engine" desc={`${s.dead || 0} dead items`} />
-        <QuickAction href="/seller-portal/routing" icon="🗺️" label="Smart Routing" desc="AI recommendations" />
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <QuickAction href="/seller-portal/warehouses" icon="🏭" label="Warehouses" desc={`${warehouseData?.total_warehouses || 0} cities • ${warehouseData?.total_products || 0} items`} />
+        <QuickAction href="/seller-portal/inventory" icon="📦" label="Inventory" desc="Filter & manage" />
+        <QuickAction href="/seller-portal/returns" icon="↩️" label="Returns & Rescue" desc={`${s.returned || 0} returned`} />
+        <QuickAction href="/seller-portal/routing" icon="🗺️" label="Routing Engine" desc="Demand map" />
+        <QuickAction href="/seller-portal/analytics" icon="📊" label="Analytics" desc="Revenue & trends" />
       </div>
     </div>
   )

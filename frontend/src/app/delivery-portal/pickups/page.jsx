@@ -15,18 +15,21 @@ export default function PickupsPage() {
   const [tab, setTab] = useState('pickups')
   const [selectedOrder, setSelectedOrder] = useState(null)
   const [acceptedData, setAcceptedData] = useState(null)
+  const [returnPickups, setReturnPickups] = useState([])
   const [actionLoading, setActionLoading] = useState(null)
 
   useEffect(() => { fetchAll() }, [])
 
   async function fetchAll() {
     try {
-      const [pickupsRes, deliveriesRes] = await Promise.allSettled([
+      const [pickupsRes, deliveriesRes, returnsRes] = await Promise.allSettled([
         partnerFetch('/api/v1/full-orders/pickup-queue'),
         partnerFetch('/api/v1/full-orders/delivery-queue'),
+        partnerFetch('/api/v1/returns/pickup-queue'),
       ])
       if (pickupsRes.status === 'fulfilled') setPickups(pickupsRes.value.data.pickups || [])
       if (deliveriesRes.status === 'fulfilled') setDeliveries(deliveriesRes.value.data.deliveries || [])
+      if (returnsRes.status === 'fulfilled') setReturnPickups(returnsRes.value.data.return_pickups || [])
     } catch (err) { console.error(err) }
     finally { setLoading(false) }
   }
@@ -54,11 +57,23 @@ export default function PickupsPage() {
     finally { setActionLoading(null) }
   }
 
+  async function handleAcceptReturn(returnId) {
+    setActionLoading(returnId)
+    try {
+      const res = await partnerPost(`/api/v1/returns/accept-pickup?return_id=${returnId}`)
+      setAcceptedData({ ...res.data, isReturn: true })
+      setReturnPickups(prev => prev.filter(r => r.return_id !== returnId))
+      localStorage.setItem('sl_active_return_id', returnId)
+    } catch (err) { console.error(err) }
+    finally { setActionLoading(null) }
+  }
+
   if (loading) return <div className="flex justify-center py-12"><div className="h-6 w-6 border-2 border-gray-200 border-t-amber-500 rounded-full animate-spin" /></div>
 
   // After accepting — show OTP + contact details
   if (acceptedData) {
-    const contact = acceptedData.seller_contact || acceptedData.buyer_contact
+    const contact = acceptedData.seller_contact || acceptedData.buyer_contact || acceptedData.customer_contact
+    const isReturn = acceptedData.isReturn || !!acceptedData.customer_contact
     const isPickup = !!acceptedData.seller_contact
     return (
       <div className="max-w-md mx-auto space-y-6">
@@ -69,14 +84,14 @@ export default function PickupsPage() {
         {/* OTP Card */}
         <div className="bg-white border border-gray-100 rounded-xl p-5 text-center">
           <p className="text-sm text-gray-600">
-            Go to the {isPickup ? 'seller' : 'buyer'} and <strong>ask them for the OTP</strong>. Enter it on the Active Delivery page to verify.
+            Go to the {isReturn ? 'customer' : isPickup ? 'seller' : 'buyer'} and <strong>ask them for the OTP</strong>. Enter it on the Active Delivery page to verify.
           </p>
         </div>
 
         {/* Contact Details */}
         <div className="bg-white border border-gray-100 rounded-xl p-5 space-y-3">
           <p className="text-xs text-gray-400 uppercase font-medium">
-            {isPickup ? 'Seller Contact' : 'Buyer Contact'}
+            {isReturn ? 'Customer Contact' : isPickup ? 'Seller Contact' : 'Buyer Contact'}
           </p>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
@@ -125,8 +140,8 @@ export default function PickupsPage() {
           {/* Product */}
           <div className="flex items-center gap-3">
             <div className="w-16 h-16 rounded-lg bg-gray-100 overflow-hidden">
-              {selectedOrder.product_image?.startsWith('http') ? (
-                <img src={selectedOrder.product_image} alt="" className="w-full h-full object-cover" />
+              {(selectedOrder.product_image || selectedOrder.product_image_url)?.startsWith('http') ? (
+                <img src={selectedOrder.product_image || selectedOrder.product_image_url} alt="" className="w-full h-full object-cover" />
               ) : <div className="w-full h-full flex items-center justify-center text-2xl">📦</div>}
             </div>
             <div>
@@ -138,16 +153,16 @@ export default function PickupsPage() {
           {/* Contact Info */}
           <div className="bg-gray-50 rounded-lg p-3 space-y-2">
             <p className="text-xs text-gray-400 uppercase font-medium">
-              {isPickup ? 'Pickup From (Seller)' : 'Deliver To (Buyer)'}
+              {tab === 'returns' ? 'Return Pickup From (Customer)' : isPickup ? 'Pickup From (Seller)' : 'Deliver To (Buyer)'}
             </p>
             <p className="text-sm font-medium text-gray-900">
-              {isPickup ? selectedOrder.seller_name : selectedOrder.buyer_name}
+              {tab === 'returns' ? selectedOrder.customer_name : isPickup ? selectedOrder.seller_name : selectedOrder.buyer_name}
             </p>
             <p className="text-xs text-gray-600 flex items-center gap-1">
-              <Phone className="h-3 w-3" /> {isPickup ? selectedOrder.seller_phone : selectedOrder.buyer_phone}
+              <Phone className="h-3 w-3" /> {tab === 'returns' ? selectedOrder.customer_phone : isPickup ? selectedOrder.seller_phone : selectedOrder.buyer_phone}
             </p>
             <p className="text-xs text-gray-600 flex items-center gap-1">
-              <MapPin className="h-3 w-3" /> {isPickup ? selectedOrder.seller_address : selectedOrder.buyer_address}
+              <MapPin className="h-3 w-3" /> {tab === 'returns' ? (selectedOrder.customer_address || selectedOrder.customer_city) : isPickup ? selectedOrder.seller_address : selectedOrder.buyer_address}
             </p>
           </div>
 
@@ -172,12 +187,16 @@ export default function PickupsPage() {
 
           {/* Accept Button */}
           <button
-            onClick={() => isPickup ? handleAcceptPickup(selectedOrder.order_id) : handleAcceptDelivery(selectedOrder.order_id)}
-            disabled={actionLoading === selectedOrder.order_id}
+            onClick={() => {
+              if (tab === 'returns') handleAcceptReturn(selectedOrder.return_id)
+              else if (isPickup) handleAcceptPickup(selectedOrder.order_id)
+              else handleAcceptDelivery(selectedOrder.order_id)
+            }}
+            disabled={actionLoading === (selectedOrder.order_id || selectedOrder.return_id)}
             className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white font-semibold rounded-xl disabled:opacity-50 flex items-center justify-center gap-2"
           >
-            {actionLoading === selectedOrder.order_id ? 'Accepting...' : (
-              <><Truck className="h-4 w-4" /> Accept {isPickup ? 'Pickup' : 'Delivery'}</>
+            {actionLoading ? 'Accepting...' : (
+              <><Truck className="h-4 w-4" /> Accept {tab === 'returns' ? 'Return Pickup' : isPickup ? 'Pickup' : 'Delivery'}</>
             )}
           </button>
         </div>
@@ -196,33 +215,37 @@ export default function PickupsPage() {
       <div className="flex gap-1 bg-white border border-gray-100 rounded-xl p-1">
         <button onClick={() => setTab('pickups')}
           className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition ${tab === 'pickups' ? 'bg-amber-500 text-white' : 'text-gray-500 hover:bg-gray-50'}`}>
-          🏠 Pickups from Sellers ({pickups.length})
+          🏠 Pickups ({pickups.length})
         </button>
         <button onClick={() => setTab('deliveries')}
           className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition ${tab === 'deliveries' ? 'bg-amber-500 text-white' : 'text-gray-500 hover:bg-gray-50'}`}>
-          📦 Deliveries to Buyers ({deliveries.length})
+          📦 Deliveries ({deliveries.length})
+        </button>
+        <button onClick={() => setTab('returns')}
+          className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition ${tab === 'returns' ? 'bg-amber-500 text-white' : 'text-gray-500 hover:bg-gray-50'}`}>
+          ↩️ Returns ({returnPickups.length})
         </button>
       </div>
 
       {/* List */}
-      {(tab === 'pickups' ? pickups : deliveries).length === 0 ? (
+      {(tab === 'pickups' ? pickups : tab === 'deliveries' ? deliveries : returnPickups).length === 0 ? (
         <div className="bg-white border border-gray-100 rounded-xl p-12 text-center">
           <Package className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-500">No {tab === 'pickups' ? 'pickups' : 'deliveries'} available right now</p>
+          <p className="text-gray-500">No {tab} available right now</p>
           <p className="text-xs text-gray-400 mt-1">Check back soon — new orders appear instantly</p>
         </div>
       ) : (
         <div className="space-y-3">
-          {(tab === 'pickups' ? pickups : deliveries).map(order => (
+          {(tab === 'pickups' ? pickups : tab === 'deliveries' ? deliveries : returnPickups).map(order => (
             <button
-              key={order.order_id}
+              key={order.order_id || order.return_id}
               onClick={() => setSelectedOrder(order)}
               className="w-full bg-white border border-gray-100 rounded-xl p-4 hover:shadow-md hover:border-amber-200 transition text-left"
             >
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0">
-                  {order.product_image?.startsWith('http') ? (
-                    <img src={order.product_image} alt="" className="w-full h-full object-cover" />
+                  {(order.product_image || order.product_image_url)?.startsWith('http') ? (
+                    <img src={order.product_image || order.product_image_url} alt="" className="w-full h-full object-cover" />
                   ) : <div className="w-full h-full flex items-center justify-center text-xl">📦</div>}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -230,6 +253,8 @@ export default function PickupsPage() {
                   <p className="text-xs text-gray-500">
                     {tab === 'pickups'
                       ? `Pickup: ${order.seller_name} • ${order.seller_city}`
+                      : tab === 'returns'
+                      ? `Return pickup: ${order.customer_name} • ${order.customer_city}`
                       : `Deliver to: ${order.buyer_name} • ${order.buyer_city}`
                     }
                   </p>

@@ -251,3 +251,57 @@ async def update_rider_city(data: dict, partner: dict = Depends(get_current_deli
     await db.put_item("delivery_partners", partner)
 
     return {"message": f"City updated to {city}", "city": city}
+
+
+@router.get("/delivery-partner/green-credits")
+async def get_rider_green_credits(partner: dict = Depends(get_current_delivery_partner)):
+    """Get delivery partner's green credits balance and history."""
+    balance = int(partner.get("green_credits_earned", 0))
+    history = partner.get("green_credits_history", [])
+    # Sort newest first
+    history.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+
+    total_earned = sum(h.get("credits", 0) for h in history if h.get("type") == "earn")
+    total_redeemed = sum(h.get("credits", 0) for h in history if h.get("type") == "redeem")
+
+    return {
+        "balance": balance,
+        "total_earned": total_earned,
+        "total_redeemed": total_redeemed,
+        "history": history[:50],
+    }
+
+
+@router.post("/delivery-partner/redeem-credits")
+async def redeem_rider_credits(data: dict, partner: dict = Depends(get_current_delivery_partner)):
+    """Redeem green credits for a voucher/coupon."""
+    amount = int(data.get("amount", 0))
+    voucher_type = data.get("voucher_type", "")
+
+    if not amount or not voucher_type:
+        raise HTTPException(status_code=400, detail="Amount and voucher type required")
+
+    balance = int(partner.get("green_credits_earned", 0))
+    if balance < amount:
+        raise HTTPException(status_code=400, detail=f"Insufficient credits. Have {balance}, need {amount}")
+
+    import random, string
+    voucher_code = "SL-" + "".join(random.choices(string.ascii_uppercase + string.digits, k=8))
+
+    partner["green_credits_earned"] = balance - amount
+    gc_history = partner.get("green_credits_history", [])
+    gc_history.append({
+        "credits": amount,
+        "type": "redeem",
+        "reason": f"Redeemed: {voucher_type}",
+        "voucher_code": voucher_code,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    })
+    partner["green_credits_history"] = gc_history
+    await db.put_item("delivery_partners", partner)
+
+    return {
+        "message": f"🎉 Redeemed {amount} credits for {voucher_type}!",
+        "voucher_code": voucher_code,
+        "new_balance": partner["green_credits_earned"],
+    }

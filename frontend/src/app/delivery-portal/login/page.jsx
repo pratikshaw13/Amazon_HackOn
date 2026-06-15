@@ -51,18 +51,18 @@ export default function DeliveryPartnerLoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-orange-50 to-amber-50 flex flex-col items-center pt-12 pb-12 px-4">
+    <div className="min-h-screen bg-gradient-to-b from-amber-700 via-amber-600 to-amber-800 flex flex-col items-center justify-center px-4 py-8">
       <div className="flex items-center gap-3 mb-8">
-        <Truck className="h-10 w-10 text-brand-amber" />
+        <Truck className="h-10 w-10 text-white" />
         <div>
-          <span className="font-bold text-xl text-gray-900 block">SecondLife Flex</span>
-          <span className="text-xs text-amber-600 font-medium tracking-wider uppercase">Delivery Partner Portal</span>
+          <span className="font-bold text-xl text-white block">SecondLife Flex</span>
+          <span className="text-xs text-amber-200 font-medium tracking-wider uppercase">Delivery Partner Portal</span>
         </div>
       </div>
 
-      <div className="w-full max-w-sm bg-white rounded-xl p-6 shadow-xl">
-        <h1 className="text-xl font-bold text-gray-900 mb-1">Partner Sign In</h1>
-        <p className="text-sm text-gray-500 mb-5">Pre-approved delivery partners only</p>
+      <div className="w-full max-w-md bg-white rounded-xl p-8 shadow-2xl">
+        <h1 className="text-2xl font-bold text-gray-900 mb-1">Partner Sign In</h1>
+        <p className="text-sm text-gray-500 mb-6">Pre-approved delivery partners only</p>
 
         {banner && (
           <div className="flex items-start gap-2 bg-red-50 border border-red-200 text-red-700 rounded-md px-3 py-2.5 mb-4 text-sm">
@@ -115,16 +115,16 @@ export default function DeliveryPartnerLoginPage() {
         </div>
       </div>
 
-      <p className="mt-6 text-sm text-gray-500">
+      <p className="mt-6 text-sm text-amber-100">
         Not a delivery partner?{' '}
-        <Link href="/login" className="text-brand-amber hover:underline font-medium">Customer Sign In</Link>
+        <Link href="/login" className="text-white hover:underline font-medium">Customer Sign In</Link>
       </p>
 
-      <div className="mt-4 w-full max-w-sm bg-white/70 border border-amber-200 rounded-lg p-3">
-        <p className="text-xs text-gray-500 font-medium mb-1">Demo Credentials:</p>
-        <p className="text-xs text-gray-500 font-mono">ID: FLEX-DEL-1001</p>
-        <p className="text-xs text-gray-500 font-mono">Phone: 9876543210</p>
-        <p className="text-xs text-gray-500 font-mono">Aadhaar Last 4: 4532</p>
+      <div className="mt-4 w-full max-w-md bg-white/10 border border-amber-400/30 rounded-lg p-3">
+        <p className="text-xs text-amber-100 font-medium mb-1">Demo Credentials:</p>
+        <p className="text-xs text-amber-200 font-mono">ID: FLEX-DEL-1001</p>
+        <p className="text-xs text-amber-200 font-mono">Phone: 9876543210</p>
+        <p className="text-xs text-amber-200 font-mono">Aadhaar Last 4: 4532</p>
       </div>
     </div>
   )
