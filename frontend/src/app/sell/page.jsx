@@ -72,7 +72,8 @@ export default function SellPage() {
       formData.append('product_name', sessionData.product_name || '')
 
       const res = await api.post('/api/v1/sell/agent/image', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 120000, // 2 min — AI vision analysis can take time with local models
       })
       const data = res.data
 
@@ -111,6 +112,8 @@ export default function SellPage() {
         product_name: name,
         original_price: price,
         product_id: sessionData.product_id,
+        condition_score: sessionData.ai_assessment?.condition_score || null,
+        demand_level: sessionData.ai_assessment?.demand_level || null,
       })
       const data = res.data
       setSessionData(prev => ({ ...prev, estimate: data.estimate }))

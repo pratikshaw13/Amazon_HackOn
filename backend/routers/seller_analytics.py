@@ -15,6 +15,11 @@ async def get_analytics_overview(seller: dict = Depends(get_current_certified_se
     all_items = await db.scan_table("seller_inventory", limit=200)
     items = [i for i in all_items if i.get("seller_id") == seller["seller_id"]]
 
+    # Also fetch returns data for this seller (marketplace revenue from returns)
+    all_returns = await db.scan_table("sl_returns", limit=200)
+    seller_returns = [r for r in all_returns if r.get("seller_id") == seller["seller_id"]]
+    listed_returns = [r for r in seller_returns if r.get("status") == "listed"]
+
     # Status counts
     active = [i for i in items if i.get("status") == "active"]
     returned = [i for i in items if i.get("status") == "returned"]
@@ -23,11 +28,17 @@ async def get_analytics_overview(seller: dict = Depends(get_current_certified_se
     sold = [i for i in items if i.get("status") == "sold"]
     donated = [i for i in items if i.get("status") == "donated"]
 
-    # Revenue
-    total_revenue = sum(float(i.get("current_price", 0)) for i in sold)
+    # Revenue — from inventory sold + from return listings sold
+    inventory_revenue = sum(float(i.get("current_price", 0)) for i in sold)
+    returns_revenue = sum(float(r.get("listing_price", 0)) for r in listed_returns)
+    total_revenue = inventory_revenue + returns_revenue
+
     active_value = sum(float(i.get("current_price", 0)) for i in active)
     dead_value = sum(float(i.get("current_price", 0)) for i in dead)
     rescued_value = sum(float(i.get("current_price", 0)) for i in rescued)
+
+    # Green credits from seller record
+    green_credits_balance = int(seller.get("green_credits", 0))
 
     # Return rate
     total_products = len(items)
@@ -72,12 +83,14 @@ async def get_analytics_overview(seller: dict = Depends(get_current_certified_se
     low_demand = sorted_by_demand[-5:]
 
     # Products saved from liquidation
-    products_saved = len(rescued) + len(donated)
+    products_saved = len(rescued) + len(donated) + len(listed_returns)
 
     return {
         "summary": {
             "total_products": total_products,
             "total_revenue": total_revenue,
+            "inventory_revenue": inventory_revenue,
+            "returns_revenue": returns_revenue,
             "active_inventory_value": active_value,
             "dead_inventory_value": dead_value,
             "recovered_value": rescued_value,
@@ -85,6 +98,10 @@ async def get_analytics_overview(seller: dict = Depends(get_current_certified_se
             "avg_inventory_age": avg_age,
             "products_saved_from_liquidation": products_saved,
             "green_score": int(seller.get("green_score", 0)),
+            "green_credits": green_credits_balance,
+            "returns_listed": len(listed_returns),
+            "returns_at_warehouse": len([r for r in seller_returns if r.get("status") == "at_warehouse"]),
+            "returns_in_transit": len([r for r in seller_returns if r.get("status") in ("pending", "rider_assigned", "picked_up")]),
         },
         "status_breakdown": {
             "active": len(active),

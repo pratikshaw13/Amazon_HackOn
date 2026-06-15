@@ -31,6 +31,7 @@ app.add_middleware(
 from routers import valuation, passport, marketplace, heatmap, prevention, green, agents, auth
 from routers import transactions, verification, seller, routing, search, cart
 from routers import sell_agent, certified_seller, seller_inventory, seller_routing, rescue_engine, seller_analytics, delivery_partner, delivery_orders, full_orders
+from routers import returns
 
 app.include_router(valuation.router, prefix="/api/v1", tags=["Valuation"])
 app.include_router(passport.router, prefix="/api/v1", tags=["Passport"])
@@ -55,6 +56,7 @@ app.include_router(seller_analytics.router, prefix="/api/v1", tags=["Seller Anal
 app.include_router(delivery_partner.router, prefix="/api/v1", tags=["Delivery Partner"])
 app.include_router(delivery_orders.router, prefix="/api/v1", tags=["Delivery Orders"])
 app.include_router(full_orders.router, prefix="/api/v1", tags=["Full Orders"])
+app.include_router(returns.router, prefix="/api/v1", tags=["Returns"])
 app.include_router(seller_analytics.router, prefix="/api/v1", tags=["Seller Analytics"])
 app.include_router(seller_analytics.router, prefix="/api/v1", tags=["Seller Analytics"])
 

@@ -43,7 +43,7 @@ export default function DeliveryPortalLayout({ children }) {
       <header className="sticky top-0 z-50">
         {/* Row 1 */}
         <div className="bg-amber-600 text-white">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-14">
+          <div className="w-full px-4 sm:px-6 lg:px-8 flex items-center justify-between h-14">
             <Link href="/delivery-portal" className="flex items-center gap-2">
               <Truck className="h-6 w-6" />
               <span className="font-bold text-sm">SecondLife <span className="text-amber-200">Flex</span></span>
@@ -52,7 +52,7 @@ export default function DeliveryPortalLayout({ children }) {
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2 text-sm">
                 <Leaf className="h-4 w-4 text-amber-200" />
-                <span className="text-amber-100 text-xs font-medium">Earning Green Credits</span>
+                <span className="text-amber-100 text-xs font-medium hidden sm:inline">Earning Green Credits</span>
               </div>
               <div className="text-right hidden sm:block">
                 <p className="text-xs text-amber-200">{partner.city} • {partner.vehicle_type}</p>
@@ -67,7 +67,7 @@ export default function DeliveryPortalLayout({ children }) {
 
         {/* Row 2 — Nav */}
         <div className="bg-amber-700 text-white">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-1 h-10 overflow-x-auto">
+          <div className="w-full px-4 sm:px-6 lg:px-8 flex items-center gap-1 h-10 overflow-x-auto">
             {navItems.map(item => {
               const Icon = item.icon
               const isActive = pathname === item.href
@@ -84,7 +84,7 @@ export default function DeliveryPortalLayout({ children }) {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="w-full px-4 sm:px-6 lg:px-8 py-6">
         {children}
       </main>
     </div>

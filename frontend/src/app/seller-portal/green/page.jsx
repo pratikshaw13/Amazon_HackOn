@@ -12,21 +12,41 @@ export default function SellerGreenPage() {
   const [data, setData] = useState(null)
   const [seller, setSeller] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [gcData, setGcData] = useState(null)
+  const [redeemMsg, setRedeemMsg] = useState('')
+  const [redeemLoading, setRedeemLoading] = useState(false)
 
   useEffect(() => {
     async function fetch() {
       try {
-        const [analyticsRes, profileRes] = await Promise.all([
+        const [analyticsRes, profileRes, gcRes] = await Promise.all([
           api.get('/api/v1/seller-analytics/overview', { headers: { Authorization: `Bearer ${getSellerToken()}` } }),
           api.get('/api/v1/certified-seller/me', { headers: { Authorization: `Bearer ${getSellerToken()}` } }),
+          api.get('/api/v1/certified-seller/green-credits', { headers: { Authorization: `Bearer ${getSellerToken()}` } }),
         ])
         setData(analyticsRes.data)
         setSeller(profileRes.data)
+        setGcData(gcRes.data)
       } catch (err) { console.error(err) }
       finally { setLoading(false) }
     }
     fetch()
   }, [])
+
+  async function handleRedeem(amount, voucherType) {
+    setRedeemLoading(true)
+    setRedeemMsg('')
+    try {
+      const res = await api.post('/api/v1/certified-seller/redeem-credits',
+        { amount, voucher_type: voucherType },
+        { headers: { Authorization: `Bearer ${getSellerToken()}` } }
+      )
+      setRedeemMsg(`${res.data.message} Code: ${res.data.voucher_code}`)
+      setGcData(prev => prev ? { ...prev, balance: res.data.new_balance } : prev)
+    } catch (err) {
+      setRedeemMsg(err.response?.data?.detail || 'Redeem failed')
+    } finally { setRedeemLoading(false) }
+  }
 
   if (loading) return <div className="flex justify-center py-12"><div className="h-6 w-6 border-2 border-gray-200 border-t-brand-green rounded-full animate-spin" /></div>
   if (!data || !seller) return null
@@ -78,7 +98,7 @@ export default function SellerGreenPage() {
         <ImpactCard icon={<Globe className="h-6 w-6 text-blue-500" />} label="CO₂ Prevented" value={`${Math.round(co2Saved)} kg`} sub="Equivalent to driving 400km less" />
         <ImpactCard icon={<TreePine className="h-6 w-6 text-green-600" />} label="Trees Equivalent" value={treesEquivalent} sub="Annual CO₂ absorption" />
         <ImpactCard icon={<Recycle className="h-6 w-6 text-brand-amber" />} label="Waste Prevented" value={`${Math.round(wastePreventedKg)} kg`} sub="Diverted from landfill" />
-        <ImpactCard icon={<Award className="h-6 w-6 text-purple-500" />} label="Green Credits" value={int(seller.green_score) * 12} sub="Earned from sustainable actions" />
+        <ImpactCard icon={<Award className="h-6 w-6 text-purple-500" />} label="Green Credits" value={gcData?.balance || 0} sub="Earned from sustainable actions" />
       </div>
 
       {/* How Credits Are Earned */}
@@ -114,6 +134,53 @@ export default function SellerGreenPage() {
           <ProgressMetric label="Green score" current={greenScore} max={100} color="bg-brand-green" />
         </div>
       </div>
+
+      {/* Redeem Vouchers */}
+      <div className="bg-white border border-gray-100 rounded-xl p-6">
+        <p className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-4">Redeem Green Credits</p>
+        {redeemMsg && (
+          <div className="mb-3 p-2 bg-brand-green-light border border-brand-green/20 rounded-lg text-xs text-brand-green-dark">{redeemMsg}</div>
+        )}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {[
+            { name: '₹50 Amazon Pay', cost: 100, icon: '💰' },
+            { name: '₹100 Amazon Pay', cost: 200, icon: '💰' },
+            { name: 'Free Delivery (5 orders)', cost: 50, icon: '🚚' },
+            { name: '10% Off Coupon', cost: 75, icon: '🏷️' },
+          ].map(v => (
+            <button
+              key={v.name}
+              onClick={() => handleRedeem(v.cost, v.name)}
+              disabled={redeemLoading || (gcData?.balance || 0) < v.cost}
+              className="p-3 bg-gray-50 border border-gray-100 rounded-lg text-left hover:border-brand-green hover:bg-brand-green-light transition disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <span className="text-lg">{v.icon}</span>
+              <p className="text-xs font-medium text-gray-900 mt-1">{v.name}</p>
+              <p className="text-[10px] text-brand-green font-medium">{v.cost} credits</p>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Green Credits History */}
+      {gcData?.history?.length > 0 && (
+        <div className="bg-white border border-gray-100 rounded-xl p-6">
+          <p className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-4">Credits Transaction History</p>
+          <div className="space-y-2 max-h-64 overflow-y-auto">
+            {gcData.history.map((h, i) => (
+              <div key={i} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div>
+                  <p className="text-sm font-medium text-gray-800">{h.reason}</p>
+                  <p className="text-[10px] text-gray-400">{h.timestamp ? new Date(h.timestamp).toLocaleDateString() : ''}</p>
+                </div>
+                <span className={`text-sm font-bold ${h.type === 'earn' ? 'text-green-600' : 'text-red-500'}`}>
+                  {h.type === 'earn' ? '+' : '-'}{h.credits}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Certification Badge */}
       <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-6 text-center">

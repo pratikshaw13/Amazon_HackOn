@@ -40,16 +40,16 @@ export default function SellerAnalyticsPage() {
       {/* Key Metrics */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <MetricCard icon={<DollarSign className="h-5 w-5 text-green-600" />} label="Total Revenue" value={`₹${Number(s.total_revenue).toLocaleString()}`} color="text-green-600" />
-        <MetricCard icon={<RotateCcw className="h-5 w-5 text-brand-amber" />} label="Return Rate" value={`${s.return_rate}%`} color="text-brand-amber" />
+        <MetricCard icon={<RotateCcw className="h-5 w-5 text-brand-amber" />} label="Returns Revenue" value={`₹${Number(s.returns_revenue || 0).toLocaleString()}`} color="text-brand-amber" />
         <MetricCard icon={<Package className="h-5 w-5 text-brand-blue" />} label="Avg Inventory Age" value={`${s.avg_inventory_age} days`} />
-        <MetricCard icon={<Leaf className="h-5 w-5 text-brand-green" />} label="Products Saved" value={s.products_saved_from_liquidation} color="text-brand-green" />
+        <MetricCard icon={<Leaf className="h-5 w-5 text-brand-green" />} label="Green Credits" value={s.green_credits || 0} color="text-brand-green" />
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <MetricCard icon={<TrendingUp className="h-5 w-5 text-brand-green" />} label="Active Value" value={`₹${Number(s.active_inventory_value).toLocaleString()}`} color="text-brand-green" />
         <MetricCard icon={<AlertTriangle className="h-5 w-5 text-red-500" />} label="Dead Value" value={`₹${Number(s.dead_inventory_value).toLocaleString()}`} color="text-red-600" />
         <MetricCard icon={<DollarSign className="h-5 w-5 text-blue-600" />} label="Recovered Value" value={`₹${Number(s.recovered_value).toLocaleString()}`} color="text-blue-600" />
-        <MetricCard icon={<Leaf className="h-5 w-5 text-brand-green" />} label="Green Score" value={`${s.green_score}/100`} color="text-brand-green" />
+        <MetricCard icon={<Leaf className="h-5 w-5 text-brand-green" />} label="Products Saved" value={s.products_saved_from_liquidation} color="text-brand-green" />
       </div>
 
       {/* Status Breakdown */}
