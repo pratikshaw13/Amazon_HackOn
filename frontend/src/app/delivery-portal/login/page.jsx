@@ -51,12 +51,12 @@ export default function DeliveryPartnerLoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-amber-700 via-amber-600 to-amber-800 flex flex-col items-center justify-center px-4 py-8">
+    <div className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 flex flex-col items-center justify-center px-4 py-8">
       <div className="flex items-center gap-3 mb-8">
-        <Truck className="h-10 w-10 text-white" />
+        <Truck className="h-10 w-10 text-brand-green" />
         <div>
           <span className="font-bold text-xl text-white block">SecondLife Flex</span>
-          <span className="text-xs text-amber-200 font-medium tracking-wider uppercase">Delivery Partner Portal</span>
+          <span className="text-xs text-green-400 font-medium tracking-wider uppercase">Delivery Partner Portal</span>
         </div>
       </div>
 
@@ -77,7 +77,7 @@ export default function DeliveryPartnerLoginPage() {
             <input type="text" value={formData.partner_id}
               onChange={e => setFormData(p => ({ ...p, partner_id: e.target.value.toUpperCase() }))}
               placeholder="FLEX-DEL-1001"
-              className={`w-full px-3 py-2 border rounded-md text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-amber focus:border-brand-amber ${errors.partner_id ? 'border-red-500' : 'border-gray-300'}`}
+              className={`w-full px-3 py-2 border rounded-md text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green ${errors.partner_id ? 'border-red-500' : 'border-gray-300'}`}
             />
             {errors.partner_id && <p className="mt-1 text-xs text-red-600">{errors.partner_id}</p>}
           </div>
@@ -87,7 +87,7 @@ export default function DeliveryPartnerLoginPage() {
             <input type="tel" value={formData.phone} maxLength={10}
               onChange={e => setFormData(p => ({ ...p, phone: e.target.value.replace(/\D/g, '') }))}
               placeholder="10-digit mobile number"
-              className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand-amber focus:border-brand-amber ${errors.phone ? 'border-red-500' : 'border-gray-300'}`}
+              className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green ${errors.phone ? 'border-red-500' : 'border-gray-300'}`}
             />
             {errors.phone && <p className="mt-1 text-xs text-red-600">{errors.phone}</p>}
           </div>
@@ -97,35 +97,36 @@ export default function DeliveryPartnerLoginPage() {
             <input type="text" value={formData.aadhaar_last4} maxLength={4}
               onChange={e => setFormData(p => ({ ...p, aadhaar_last4: e.target.value.replace(/\D/g, '') }))}
               placeholder="XXXX"
-              className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand-amber focus:border-brand-amber ${errors.aadhaar_last4 ? 'border-red-500' : 'border-gray-300'}`}
+              className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green ${errors.aadhaar_last4 ? 'border-red-500' : 'border-gray-300'}`}
             />
             {errors.aadhaar_last4 && <p className="mt-1 text-xs text-red-600">{errors.aadhaar_last4}</p>}
           </div>
 
           <button type="submit" disabled={loading}
-            className="w-full py-2.5 bg-brand-amber hover:bg-amber-500 text-white font-semibold text-sm rounded-md transition disabled:opacity-60">
+            className="w-full py-2.5 bg-brand-green hover:bg-brand-green-dark text-white font-semibold text-sm rounded-md transition disabled:opacity-60">
             {loading ? 'Signing in…' : 'Sign in as Delivery Partner'}
           </button>
         </form>
 
-        <div className="mt-5 p-3 bg-amber-50 rounded-lg">
+        <div className="mt-5 p-3 bg-gray-50 rounded-lg">
           <p className="text-xs text-gray-600 leading-relaxed">
             <strong>Earn ₹470/4hr + ₹15-20 per delivery + Green Credits.</strong> Pick up pre-owned products from sellers and deliver to nearest Amazon warehouse.
           </p>
         </div>
       </div>
 
-      <p className="mt-6 text-sm text-amber-100">
+      <p className="mt-6 text-sm text-gray-400">
         Not a delivery partner?{' '}
-        <Link href="/login" className="text-white hover:underline font-medium">Customer Sign In</Link>
+        <Link href="/login" className="text-brand-green hover:underline font-medium">Customer Sign In</Link>
       </p>
 
-      <div className="mt-4 w-full max-w-md bg-white/10 border border-amber-400/30 rounded-lg p-3">
-        <p className="text-xs text-amber-100 font-medium mb-1">Demo Credentials:</p>
-        <p className="text-xs text-amber-200 font-mono">ID: FLEX-DEL-1001</p>
-        <p className="text-xs text-amber-200 font-mono">Phone: 9876543210</p>
-        <p className="text-xs text-amber-200 font-mono">Aadhaar Last 4: 4532</p>
+      <div className="mt-4 w-full max-w-md bg-gray-800/50 border border-gray-700 rounded-lg p-3">
+        <p className="text-xs text-gray-400 font-medium mb-1">Demo Credentials:</p>
+        <p className="text-xs text-gray-500 font-mono">ID: FLEX-DEL-1001</p>
+        <p className="text-xs text-gray-500 font-mono">Phone: 9876543210</p>
+        <p className="text-xs text-gray-500 font-mono">Aadhaar Last 4: 4532</p>
       </div>
     </div>
   )
 }
+

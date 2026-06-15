@@ -7,6 +7,7 @@ import { Leaf, Menu, X, ChevronDown, User, Search, ShoppingCart } from 'lucide-r
 import { useAuth } from '../../context/AuthContext'
 import { useCart } from '../../context/CartContext'
 import CitySelector from '../features/CitySelector'
+import DarkModeToggle from '../ui/DarkModeToggle'
 
 const navItems = [
   { href: '/', label: 'Dashboard' },
@@ -17,7 +18,6 @@ const navItems = [
   { href: '/returns', label: 'Returns' },
   { href: '/heatmap', label: 'Demand Map' },
   { href: '/seller-portal/login', label: 'Seller Portal' },
-  { href: '/prevention', label: 'Return Shield' },
   { href: '/green', label: 'Green Credits' },
 ]
 
@@ -30,6 +30,7 @@ export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [unseenSold, setUnseenSold] = useState(0)
   const dropdownRef = useRef(null)
 
   // Don't show navbar on login/register pages
@@ -47,6 +48,41 @@ export default function Navbar() {
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
+
+  // Fetch unseen sold count for My Listings badge
+  useEffect(() => {
+    if (!isAuthenticated) return
+    async function fetchUnseen() {
+      try {
+        const token = localStorage.getItem('sl_token')
+        if (!token) return
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/full-orders/seller-unseen-sold`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        if (res.ok) {
+          const data = await res.json()
+          setUnseenSold(data.unseen_count || 0)
+        }
+      } catch {}
+    }
+    fetchUnseen()
+    const interval = setInterval(fetchUnseen, 15000) // Check every 15s
+    return () => clearInterval(interval)
+  }, [isAuthenticated])
+
+  // Clear badge when visiting My Listings
+  useEffect(() => {
+    if (pathname === '/my-listings' && unseenSold > 0) {
+      setUnseenSold(0)
+      // Mark as seen on backend
+      const token = localStorage.getItem('sl_token')
+      if (token) {
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/full-orders/mark-seller-seen`, {
+          method: 'POST', headers: { Authorization: `Bearer ${token}` }
+        }).catch(() => {})
+      }
+    }
+  }, [pathname, unseenSold])
 
   // Early return AFTER all hooks
   if (hideNavbar) return null
@@ -103,7 +139,10 @@ export default function Navbar() {
             </form>
 
             {/* Cart + User — extreme right */}
-            <div className="flex items-center gap-3 flex-shrink-0">
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {/* Dark Mode Toggle */}
+              <DarkModeToggle />
+
               {/* Cart Icon */}
               {isAuthenticated && (
                 <Link href="/cart" className="relative p-2 text-gray-300 hover:text-white transition">
@@ -180,13 +219,18 @@ export default function Navbar() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`px-3 py-1.5 rounded text-xs font-medium whitespace-nowrap transition-colors ${
+                  className={`relative px-3 py-1.5 rounded text-xs font-medium whitespace-nowrap transition-colors ${
                     isActive
                       ? 'bg-gray-700 text-brand-green'
                       : 'text-gray-200 hover:text-white hover:bg-gray-700'
                   }`}
                 >
                   {item.label}
+                  {item.href === '/my-listings' && unseenSold > 0 && (
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                      {unseenSold}
+                    </span>
+                  )}
                 </Link>
               )
             })}

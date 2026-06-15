@@ -2,6 +2,7 @@
 Full Orders Router — Complete buyer-seller-delivery lifecycle.
 Triggered when buyer clicks "Buy Now" → creates order → triggers pickup → transit → delivery.
 """
+import os
 import uuid
 import random
 from datetime import datetime, timezone
@@ -57,6 +58,53 @@ class PaymentConfirmRequest(BaseModel):
 
 
 # ─── Buyer Endpoints ──────────────────────────────
+
+
+@router.get("/full-orders/return-warning")
+async def check_return_warning(product_id: str, user: dict = Depends(get_current_user)):
+    """Check if buyer has returned similar category items multiple times."""
+    product = await db.get_item("sl_products", {"product_id": product_id})
+    if not product:
+        return {"warning": False}
+
+    category = product.get("category", "")
+    buyer_id = user["user_id"]
+
+    # Check buyer's return history
+    all_returns = await db.scan_table("sl_returns", limit=100)
+    buyer_returns = [r for r in all_returns if r.get("customer_id") == buyer_id]
+    category_returns = [r for r in buyer_returns if r.get("category", "").lower() == category.lower()]
+
+    if len(category_returns) >= 2:
+        return {
+            "warning": True,
+            "message": f"You have returned {len(category_returns)} products in the '{category}' category before. Frequent returns increase logistics costs and carbon emissions. Consider exploring other categories for a better experience.",
+            "return_count": len(category_returns),
+            "category": category,
+        }
+
+    return {"warning": False}
+
+
+@router.get("/full-orders/seller-unseen-sold")
+async def get_unseen_sold_count(user: dict = Depends(get_current_user)):
+    """Get count of sold products the seller hasn't seen yet."""
+    all_orders = await db.scan_table("sl_full_orders", limit=200)
+    seller_orders = [o for o in all_orders if o.get("seller_id") == user["user_id"]]
+    # Count orders that are payment_confirmed but seller hasn't acknowledged
+    unseen = [o for o in seller_orders if o.get("status") == "payment_confirmed" and not o.get("seller_seen")]
+    return {"unseen_count": len(unseen), "orders": [{"order_id": o["order_id"], "product_name": o.get("product_name"), "buyer_name": o.get("buyer_name"), "buyer_city": o.get("buyer_city")} for o in unseen]}
+
+
+@router.post("/full-orders/mark-seller-seen")
+async def mark_seller_seen(user: dict = Depends(get_current_user)):
+    """Mark all seller's sold orders as seen."""
+    all_orders = await db.scan_table("sl_full_orders", limit=200)
+    seller_orders = [o for o in all_orders if o.get("seller_id") == user["user_id"] and o.get("status") == "payment_confirmed" and not o.get("seller_seen")]
+    for order in seller_orders:
+        order["seller_seen"] = True
+        await db.put_item("sl_full_orders", order)
+    return {"marked": len(seller_orders)}
 
 @router.post("/full-orders/buy")
 async def create_full_order(request: BuyNowRequest, user: dict = Depends(get_current_user)):
@@ -314,6 +362,23 @@ async def confirm_payment(request: PaymentConfirmRequest, user: dict = Depends(g
             demand_record["buyer_count"] = int(demand_record.get("buyer_count", 0)) + 1
             demand_record["last_updated"] = now
             await db.put_item("sl_demand_scores", demand_record)
+
+    # Send SMS notification to seller (AWS SNS — best effort)
+    if seller_id:
+        seller_data = await db.get_item("sl_users", {"user_id": seller_id})
+        seller_phone = seller_data.get("phone", "") if seller_data else ""
+        if seller_phone and len(seller_phone) >= 10:
+            try:
+                import boto3
+                sns = boto3.client("sns", region_name=os.getenv("AWS_REGION", "ap-south-1"),
+                    aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+                    aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"))
+                phone_number = f"+91{seller_phone[-10:]}"
+                message = f"SecondLife: {user.get('name','A buyer')} from {order.get('buyer_city','')} bought your '{order.get('product_name','')}'. Check My Listings for details."
+                sns.publish(PhoneNumber=phone_number, Message=message)
+                print(f"   📱 SMS sent to seller {phone_number}")
+            except Exception as e:
+                print(f"   ⚠️ SMS failed (non-critical): {str(e)[:80]}")
 
     return {
         "message": "Payment confirmed! Order complete. Seller has been credited.",
