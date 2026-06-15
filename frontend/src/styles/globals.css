@@ -8,6 +8,31 @@ body {
   font-family: 'Inter', system-ui, sans-serif;
 }
 
+/* Dark mode styles */
+.dark body,
+.dark {
+  --bg-primary: #111827;
+  --bg-secondary: #1f2937;
+  --text-primary: #f9fafb;
+  --text-secondary: #d1d5db;
+}
+
+.dark .bg-gray-50 { background-color: #111827 !important; }
+.dark .bg-white { background-color: #1f2937 !important; }
+.dark .border-gray-100 { border-color: #374151 !important; }
+.dark .border-gray-200 { border-color: #374151 !important; }
+.dark .text-gray-900 { color: #f9fafb !important; }
+.dark .text-gray-800 { color: #f3f4f6 !important; }
+.dark .text-gray-700 { color: #e5e7eb !important; }
+.dark .text-gray-600 { color: #d1d5db !important; }
+.dark .text-gray-500 { color: #9ca3af !important; }
+.dark .text-gray-400 { color: #9ca3af !important; }
+.dark .bg-gray-100 { background-color: #374151 !important; }
+.dark .bg-gray-50 { background-color: #1f2937 !important; }
+.dark .hover\:bg-gray-50:hover { background-color: #374151 !important; }
+.dark .hover\:bg-gray-100:hover { background-color: #4b5563 !important; }
+.dark input, .dark select { background-color: #374151 !important; color: #f9fafb !important; border-color: #4b5563 !important; }
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
@@ -17,6 +42,10 @@ body {
   background: #f1f1f1;
 }
 
+.dark ::-webkit-scrollbar-track {
+  background: #1f2937;
+}
+
 ::-webkit-scrollbar-thumb {
   background: #c4c4c4;
   border-radius: 3px;
@@ -24,4 +53,15 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #999;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #4b5563;
+}
+
+/* Responsive text */
+@media (max-width: 640px) {
+  .text-3xl { font-size: 1.5rem !important; }
+  .text-2xl { font-size: 1.25rem !important; }
+  .text-5xl { font-size: 2rem !important; }
 }

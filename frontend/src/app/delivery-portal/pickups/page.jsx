@@ -68,7 +68,7 @@ export default function PickupsPage() {
     finally { setActionLoading(null) }
   }
 
-  if (loading) return <div className="flex justify-center py-12"><div className="h-6 w-6 border-2 border-gray-200 border-t-amber-500 rounded-full animate-spin" /></div>
+  if (loading) return <div className="flex justify-center py-12"><div className="h-6 w-6 border-2 border-gray-200 border-t-brand-green rounded-full animate-spin" /></div>
 
   // After accepting — show OTP + contact details
   if (acceptedData) {
@@ -115,7 +115,7 @@ export default function PickupsPage() {
         {/* Actions */}
         <div className="flex gap-3">
           <a href="/delivery-portal/active"
-            className="flex-1 py-3 bg-amber-500 hover:bg-amber-600 text-white text-center font-semibold rounded-xl transition">
+            className="flex-1 py-3 bg-brand-green hover:bg-brand-green-dark text-white text-center font-semibold rounded-xl transition">
             Go to Active Delivery →
           </a>
           <button onClick={() => { setAcceptedData(null); fetchAll() }}
@@ -193,7 +193,7 @@ export default function PickupsPage() {
               else handleAcceptDelivery(selectedOrder.order_id)
             }}
             disabled={actionLoading === (selectedOrder.order_id || selectedOrder.return_id)}
-            className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white font-semibold rounded-xl disabled:opacity-50 flex items-center justify-center gap-2"
+            className="w-full py-3 bg-brand-green hover:bg-brand-green-dark text-white font-semibold rounded-xl disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {actionLoading ? 'Accepting...' : (
               <><Truck className="h-4 w-4" /> Accept {tab === 'returns' ? 'Return Pickup' : isPickup ? 'Pickup' : 'Delivery'}</>
@@ -214,15 +214,15 @@ export default function PickupsPage() {
       {/* Tabs */}
       <div className="flex gap-1 bg-white border border-gray-100 rounded-xl p-1">
         <button onClick={() => setTab('pickups')}
-          className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition ${tab === 'pickups' ? 'bg-amber-500 text-white' : 'text-gray-500 hover:bg-gray-50'}`}>
+          className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition ${tab === 'pickups' ? 'bg-brand-green text-white' : 'text-gray-500 hover:bg-gray-50'}`}>
           🏠 Pickups ({pickups.length})
         </button>
         <button onClick={() => setTab('deliveries')}
-          className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition ${tab === 'deliveries' ? 'bg-amber-500 text-white' : 'text-gray-500 hover:bg-gray-50'}`}>
+          className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition ${tab === 'deliveries' ? 'bg-brand-green text-white' : 'text-gray-500 hover:bg-gray-50'}`}>
           📦 Deliveries ({deliveries.length})
         </button>
         <button onClick={() => setTab('returns')}
-          className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition ${tab === 'returns' ? 'bg-amber-500 text-white' : 'text-gray-500 hover:bg-gray-50'}`}>
+          className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition ${tab === 'returns' ? 'bg-brand-green text-white' : 'text-gray-500 hover:bg-gray-50'}`}>
           ↩️ Returns ({returnPickups.length})
         </button>
       </div>
@@ -274,3 +274,4 @@ export default function PickupsPage() {
     </div>
   )
 }
+

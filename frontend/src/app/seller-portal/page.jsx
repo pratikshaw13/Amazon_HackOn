@@ -58,9 +58,9 @@ export default function SellerPortalDashboard() {
             </div>
           </div>
           <div className="flex gap-2">
-            <Link href="/seller-portal/rescue"
+            <Link href="/seller-portal/warehouses"
               className="px-4 py-2 bg-brand-green text-white rounded-lg text-sm font-medium flex items-center gap-1.5 hover:bg-brand-green-dark">
-              <Zap className="h-3.5 w-3.5" /> Rescue Dead Inventory
+              <Zap className="h-3.5 w-3.5" /> View Warehouses
             </Link>
           </div>
         </div>
@@ -140,9 +140,7 @@ export default function SellerPortalDashboard() {
       {/* Quick Links */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <QuickAction href="/seller-portal/warehouses" icon="🏭" label="Warehouses" desc={`${warehouseData?.total_warehouses || 0} cities • ${warehouseData?.total_products || 0} items`} />
-        <QuickAction href="/seller-portal/inventory" icon="📦" label="Inventory" desc="Filter & manage" />
-        <QuickAction href="/seller-portal/returns" icon="↩️" label="Returns & Rescue" desc={`${s.returned || 0} returned`} />
-        <QuickAction href="/seller-portal/routing" icon="🗺️" label="Routing Engine" desc="Demand map" />
+        <QuickAction href="/seller-portal/returns" icon="↩️" label="Returns" desc={`${s.returned || 0} returned`} />
         <QuickAction href="/seller-portal/analytics" icon="📊" label="Analytics" desc="Revenue & trends" />
       </div>
     </div>

@@ -26,13 +26,13 @@ export default function DeliveryDashboard() {
     fetch()
   }, [])
 
-  if (loading) return <div className="flex justify-center py-12"><div className="h-6 w-6 border-2 border-gray-200 border-t-amber-500 rounded-full animate-spin" /></div>
+  if (loading) return <div className="flex justify-center py-12"><div className="h-6 w-6 border-2 border-gray-200 border-t-brand-green rounded-full animate-spin" /></div>
   if (!data) {
     return (
       <div className="text-center py-16">
         <Truck className="h-12 w-12 text-gray-300 mx-auto mb-4" />
         <p className="text-gray-500 mb-4">Session expired. Please login again.</p>
-        <a href="/delivery-portal/login" className="px-4 py-2 bg-amber-500 text-white rounded-lg font-medium">
+        <a href="/delivery-portal/login" className="px-4 py-2 bg-brand-green text-white rounded-lg font-medium">
           Login
         </a>
       </div>
@@ -44,7 +44,7 @@ export default function DeliveryDashboard() {
   return (
     <div className="space-y-6">
       {/* Welcome */}
-      <div className="bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl p-6 text-white">
+      <div className="bg-gradient-to-r from-brand-green to-orange-500 rounded-2xl p-6 text-white">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div className="flex items-center gap-3">
             <Truck className="h-10 w-10" />
@@ -65,10 +65,10 @@ export default function DeliveryDashboard() {
 
       {/* Key Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard icon={<Package className="h-5 w-5 text-amber-500" />} label="Total Deliveries" value={s.total_deliveries} />
+        <StatCard icon={<Package className="h-5 w-5 text-brand-green" />} label="Total Deliveries" value={s.total_deliveries} />
         <StatCard icon={<DollarSign className="h-5 w-5 text-green-600" />} label="Total Earned" value={`₹${Number(s.total_earnings).toLocaleString()}`} color="text-green-600" />
         <StatCard icon={<Leaf className="h-5 w-5 text-brand-green" />} label="Green Credits" value={s.green_credits_earned} color="text-brand-green" />
-        <StatCard icon={<Star className="h-5 w-5 text-amber-500" />} label="Acceptance Rate" value={`${Math.round(s.orders_accepted / Math.max(1, s.orders_accepted + s.orders_rejected) * 100)}%`} />
+        <StatCard icon={<Star className="h-5 w-5 text-brand-green" />} label="Acceptance Rate" value={`${Math.round(s.orders_accepted / Math.max(1, s.orders_accepted + s.orders_rejected) * 100)}%`} />
       </div>
 
       {/* Earnings Breakdown */}
@@ -94,7 +94,7 @@ export default function DeliveryDashboard() {
       <div className="grid grid-cols-2 gap-4">
         <Link href="/delivery-portal/pickups"
           className="bg-white border border-gray-100 rounded-xl p-5 hover:shadow-md transition text-center">
-          <MapPin className="h-8 w-8 text-amber-500 mx-auto mb-2" />
+          <MapPin className="h-8 w-8 text-brand-green mx-auto mb-2" />
           <p className="font-medium text-gray-900">View Available Pickups</p>
           <p className="text-xs text-gray-400 mt-1">Accept new deliveries</p>
         </Link>
@@ -117,7 +117,7 @@ export default function DeliveryDashboard() {
             { step: "4", text: "Earn ₹15-20 + Green Credits per delivery" },
           ].map(item => (
             <div key={item.step} className="flex items-start gap-2 p-3 bg-gray-50 rounded-lg">
-              <span className="w-6 h-6 rounded-full bg-amber-500 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">{item.step}</span>
+              <span className="w-6 h-6 rounded-full bg-brand-green text-white text-xs font-bold flex items-center justify-center flex-shrink-0">{item.step}</span>
               <p className="text-xs text-gray-600">{item.text}</p>
             </div>
           ))}
@@ -136,3 +136,4 @@ function StatCard({ icon, label, value, color = 'text-gray-900' }) {
     </div>
   )
 }
+

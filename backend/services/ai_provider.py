@@ -205,17 +205,107 @@ class RuleBasedFallback:
 
     def _fallback_demand(self, category: str) -> dict:
         import random
-        cities = [
-            ("Bengaluru", "Very High", 88), ("Mumbai", "High", 78),
-            ("Delhi", "High", 75), ("Hyderabad", "High", 72),
-            ("Pune", "Medium", 63), ("Chennai", "Medium", 60),
-            ("Kolkata", "Medium", 55), ("Ahmedabad", "Medium", 50),
-            ("Kochi", "Medium", 56), ("Jaipur", "Low", 40),
-            ("Lucknow", "Low", 38), ("Chandigarh", "Low", 42),
-        ]
-        return {
-            "city_demand": [
-                {"city": c, "demand": d, "score": s + random.randint(-5, 5), "reasoning": f"{d} demand market"}
-                for c, d, s in cities
-            ]
+        import time
+
+        # Category-specific city rankings (each category has unique top city)
+        category_rankings = {
+            "Electronics": [
+                ("Bengaluru", "Very High", 90), ("Hyderabad", "High", 78), ("Delhi", "High", 74),
+                ("Mumbai", "High", 72), ("Pune", "Medium", 63), ("Chennai", "Medium", 58),
+                ("Kolkata", "Medium", 52), ("Ahmedabad", "Medium", 48), ("Kochi", "Medium", 55),
+                ("Jaipur", "Low", 38), ("Lucknow", "Low", 35), ("Chandigarh", "Low", 40),
+            ],
+            "Laptops": [
+                ("Hyderabad", "Very High", 92), ("Bengaluru", "Very High", 88), ("Pune", "High", 76),
+                ("Delhi", "High", 72), ("Mumbai", "High", 70), ("Chennai", "Medium", 62),
+                ("Kolkata", "Medium", 50), ("Ahmedabad", "Medium", 48), ("Kochi", "Medium", 54),
+                ("Chandigarh", "Low", 42), ("Jaipur", "Low", 36), ("Lucknow", "Low", 32),
+            ],
+            "Smartphones": [
+                ("Delhi", "Very High", 93), ("Mumbai", "Very High", 89), ("Bengaluru", "High", 78),
+                ("Hyderabad", "High", 73), ("Chennai", "High", 70), ("Kolkata", "Medium", 62),
+                ("Pune", "Medium", 58), ("Ahmedabad", "Medium", 55), ("Jaipur", "Medium", 50),
+                ("Lucknow", "Medium", 47), ("Kochi", "Medium", 52), ("Chandigarh", "Low", 40),
+            ],
+            "Fashion": [
+                ("Mumbai", "Very High", 95), ("Delhi", "Very High", 90), ("Kolkata", "High", 75),
+                ("Bengaluru", "High", 72), ("Jaipur", "High", 70), ("Chennai", "Medium", 58),
+                ("Hyderabad", "Medium", 55), ("Pune", "Medium", 52), ("Ahmedabad", "Medium", 50),
+                ("Kochi", "Medium", 48), ("Lucknow", "Low", 40), ("Chandigarh", "Low", 38),
+            ],
+            "Furniture": [
+                ("Pune", "Very High", 88), ("Mumbai", "High", 80), ("Bengaluru", "High", 75),
+                ("Delhi", "High", 72), ("Ahmedabad", "High", 68), ("Hyderabad", "Medium", 60),
+                ("Chennai", "Medium", 55), ("Kolkata", "Medium", 50), ("Jaipur", "Medium", 48),
+                ("Kochi", "Low", 40), ("Lucknow", "Low", 38), ("Chandigarh", "Low", 35),
+            ],
+            "Kitchen": [
+                ("Ahmedabad", "Very High", 87), ("Mumbai", "High", 78), ("Delhi", "High", 75),
+                ("Pune", "High", 70), ("Bengaluru", "Medium", 62), ("Chennai", "Medium", 58),
+                ("Kolkata", "Medium", 55), ("Hyderabad", "Medium", 52), ("Jaipur", "Medium", 48),
+                ("Kochi", "Low", 42), ("Lucknow", "Low", 40), ("Chandigarh", "Low", 36),
+            ],
+            "Books": [
+                ("Kolkata", "Very High", 92), ("Delhi", "High", 80), ("Bengaluru", "High", 75),
+                ("Chennai", "High", 72), ("Kochi", "High", 70), ("Mumbai", "Medium", 62),
+                ("Hyderabad", "Medium", 58), ("Pune", "Medium", 55), ("Lucknow", "Medium", 50),
+                ("Jaipur", "Medium", 48), ("Ahmedabad", "Low", 40), ("Chandigarh", "Low", 38),
+            ],
+            "Sports": [
+                ("Chandigarh", "Very High", 88), ("Pune", "High", 80), ("Bengaluru", "High", 75),
+                ("Delhi", "High", 72), ("Mumbai", "Medium", 65), ("Hyderabad", "Medium", 58),
+                ("Chennai", "Medium", 52), ("Kochi", "Medium", 50), ("Kolkata", "Medium", 48),
+                ("Jaipur", "Low", 42), ("Ahmedabad", "Low", 40), ("Lucknow", "Low", 36),
+            ],
+            "Baby Gear": [
+                ("Mumbai", "Very High", 86), ("Delhi", "High", 78), ("Bengaluru", "High", 74),
+                ("Hyderabad", "High", 70), ("Pune", "Medium", 62), ("Chennai", "Medium", 58),
+                ("Ahmedabad", "Medium", 55), ("Kolkata", "Medium", 50), ("Kochi", "Medium", 48),
+                ("Jaipur", "Low", 40), ("Lucknow", "Low", 38), ("Chandigarh", "Low", 35),
+            ],
+            "Monitors": [
+                ("Bengaluru", "Very High", 91), ("Hyderabad", "High", 82), ("Pune", "High", 76),
+                ("Delhi", "High", 70), ("Chennai", "Medium", 63), ("Mumbai", "Medium", 60),
+                ("Kolkata", "Medium", 52), ("Kochi", "Medium", 50), ("Ahmedabad", "Low", 42),
+                ("Jaipur", "Low", 38), ("Lucknow", "Low", 35), ("Chandigarh", "Low", 40),
+            ],
+            "Headphones": [
+                ("Delhi", "Very High", 88), ("Bengaluru", "High", 82), ("Mumbai", "High", 78),
+                ("Pune", "High", 72), ("Hyderabad", "Medium", 65), ("Chennai", "Medium", 58),
+                ("Kolkata", "Medium", 53), ("Kochi", "Medium", 50), ("Ahmedabad", "Medium", 48),
+                ("Chandigarh", "Low", 42), ("Jaipur", "Low", 38), ("Lucknow", "Low", 35),
+            ],
+            "Fitness": [
+                ("Pune", "Very High", 90), ("Bengaluru", "High", 82), ("Mumbai", "High", 78),
+                ("Delhi", "High", 72), ("Hyderabad", "Medium", 60), ("Chennai", "Medium", 55),
+                ("Chandigarh", "Medium", 53), ("Ahmedabad", "Medium", 48), ("Kochi", "Low", 42),
+                ("Kolkata", "Low", 40), ("Jaipur", "Low", 38), ("Lucknow", "Low", 34),
+            ],
         }
+
+        # Get category-specific ranking or default
+        cities = category_rankings.get(category, category_rankings["Electronics"])
+
+        # Add time-based drift (changes scores slightly each hour)
+        hour_seed = int(time.time() / 3600)  # Changes every hour
+        random.seed(hour_seed + hash(category))
+        drift = lambda s: max(10, min(99, s + random.randint(-6, 6)))
+
+        result = [
+            {"city": c, "demand": d, "score": drift(s), "reasoning": f"{d} demand for {category}"}
+            for c, d, s in cities
+        ]
+
+        # Re-sort by drifted scores (ranking may shift slightly)
+        result.sort(key=lambda x: x["score"], reverse=True)
+
+        # Update demand labels based on drifted scores
+        for item in result:
+            s = item["score"]
+            if s >= 80: item["demand"] = "Very High"
+            elif s >= 60: item["demand"] = "High"
+            elif s >= 40: item["demand"] = "Medium"
+            else: item["demand"] = "Low"
+
+        random.seed()  # Reset seed
+        return {"city_demand": result}
